@@ -2,7 +2,8 @@
 /build/
 /bin/
 target/
- 
+/jflex-1.6.1/
+
 # OS Files #
 .DS_Store
  
