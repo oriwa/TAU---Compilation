@@ -1,16 +1,12 @@
 # Directories #
 /build/
 /bin/
-target/
-/jflex-1.6.1/
-
-# OS Files #
+target/# OS Files #
 .DS_Store
  
 *.class
  
 # Package Files #
-*.jar
 *.war
 *.ear
 *.db
@@ -45,7 +41,7 @@ Desktop.ini
 ######################
  
 *.pydevproject
-.project
+
 .metadata
 bin/**
 tmp/**
