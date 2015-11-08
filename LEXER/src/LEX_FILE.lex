@@ -58,14 +58,25 @@ import java_cup.runtime.*;
     /* Create a new java_cup.runtime.Symbol with information about the current token */
     /*********************************************************************************/
     private Symbol symbol(int type)               {return new Symbol(type, yyline, yycolumn);}
+    
     private Symbol symbol(int type, Object value) {return new Symbol(type, yyline, yycolumn, value);}
+    
     private void printWithLineNumber(String token){ System.out.println((yyline+1)+": " + token);}
+    
     private void printErrorAndExit(String error){ 
     	printWithLineNumber("Lexical error: " + error);
     	// exits program with error code
     	System.exit(1);
     }
     
+    private boolean isValidInteger(String value){ 
+    	try {  
+        	Integer.parseInt(value);  
+        	return true;  
+		} catch (NumberFormatException e) {  
+     		return false;  
+		} 
+    }
 %}
 
 /***********************/
@@ -164,8 +175,14 @@ COMMENT_LINE		= \/\/.*
 {QUOTE_UNCLOSED}	{	 printErrorAndExit("String missing closing quote symbol"); }	
 						
 {INTEGER}			{
-						printWithLineNumber("INTEGER("+yytext()+")");
-						return symbol(sym.INTEGER, new Integer(yytext()));
+						String value = yytext();
+						if (isValidInteger(value)) {
+							printWithLineNumber("INTEGER("+value+")");
+							return symbol(sym.INTEGER, new Integer(value));
+						}
+						else {
+							printErrorAndExit("The literal " + value + " of type int is out of range");
+						}
 					}   
 					
 {IDENTIFIER}		{
