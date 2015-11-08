@@ -72,7 +72,7 @@ import java_cup.runtime.*;
 /***********************/
 LineTerminator		= \r|\n|\r\n
 WhiteSpace			= {LineTerminator} | [ \t\f]
-INTEGER				= -?(0|[1-9][0-9]*)
+INTEGER				= 0|[1-9][0-9]*
 IDENTIFIER			= [a-z_][A-Za-z_0-9]*
 CLASS_IDENTIFIER	= [A-Z][A-Za-z_0-9]*
 QUOTABLE_ASCII		= ([\x20-\x21, \x23-\x5B, \x5D-\x7E]) /* printable ASCII characters other than quote " and backslash \ */
