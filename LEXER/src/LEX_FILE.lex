@@ -45,6 +45,8 @@ import java_cup.runtime.*;
 /****************/
 /* DECLARATIONS */
 /****************/
+%state COMMENTS
+
 /*****************************************************************************/   
 /* Code between %{ and %}, both of which must be at the beginning of a line, */
 /* will be copied letter to letter into the Lexer class code.                */
@@ -57,7 +59,12 @@ import java_cup.runtime.*;
     /*********************************************************************************/
     private Symbol symbol(int type)               {return new Symbol(type, yyline, yycolumn);}
     private Symbol symbol(int type, Object value) {return new Symbol(type, yyline, yycolumn, value);}
-    private void printToken(String token){ System.out.println((yyline+1)+": " + token);}
+    private void printWithLineNumber(String token){ System.out.println((yyline+1)+": " + token);}
+    private void printErrorAndExit(String error){ 
+    	printWithLineNumber("Lexical error: " + error);
+    	// exits program with error code
+    	System.exit(1);
+    }
     
 %}
 
@@ -66,14 +73,15 @@ import java_cup.runtime.*;
 /***********************/
 LineTerminator		= \r|\n|\r\n
 WhiteSpace			= {LineTerminator} | [ \t\f]
-INTEGER				= 0 | [1-9][0-9]*
+INTEGER				= 0|[1-9][0-9]*
 IDENTIFIER			= [a-z_][A-Za-z_0-9]*
 CLASS_IDENTIFIER	= [A-Z][A-Za-z_0-9]*
-QUOTABLE			= \\\"|[^\"]
-QUOTE				= \"{QUOTABLE}*\"
-LINE_COMMENT		= (\/\/[^\r\n]*)
-COMMENT				= (\/\*([^*]|\*[^\/*]|\*\*[^\/*])*\*+\/)|{LINE_COMMENT}
-   
+QUOTABLE_ASCII		= ([\x20-\x21, \x23-\x5B, \x5D-\x7E]) /* printable ASCII characters other than quote " and backslash \ */
+QUOTABLE_ESCAPE		= (\\\"|\\\\|\\t|\\n) /* the escape sequences \", \\, \t, and \n */
+QUOTABLE_CHARACTER 	= ({QUOTABLE_ASCII}|{QUOTABLE_ESCAPE})
+QUOTE_UNCLOSED		= (\"({QUOTABLE_CHARACTER})*)
+QUOTE				= {QUOTE_UNCLOSED}\"
+COMMENT_LINE		= \/\/.*
 /******************************/
 /* DOLAR DOLAR - DON'T TOUCH! */
 /******************************/
@@ -89,101 +97,97 @@ COMMENT				= (\/\*([^*]|\*[^\/*]|\*\*[^\/*])*\*+\/)|{LINE_COMMENT}
 /* So these regular expressions will only be matched if the   */
 /* scanner is in the start state YYINITIAL.                   */
 /**************************************************************/
-   
+
+
 <YYINITIAL> {
-"if"				{ printToken("IF"); return symbol(sym.IF);}
-"else"				{ printToken("ELSE"); return symbol(sym.ELSE);}
-"while"				{ printToken("WHILE"); return symbol(sym.WHILE);}
-"continue"			{ printToken("CONTINUE"); return symbol(sym.CONTINUE);}
-"break"				{ printToken("BREAK"); return symbol(sym.BREAK);}
-"class"				{ printToken("CLASS"); return symbol(sym.CLASS);}
-"extends"			{ printToken("EXTENDS"); return symbol(sym.EXTENDS);}
-"return"			{ printToken("RETURN"); return symbol(sym.RETURN);}
-"static"			{ printToken("STATIC"); return symbol(sym.STATIC);}
-"length"			{ printToken("LENGTH"); return symbol(sym.LENGTH);}
-"new"				{ printToken("NEW"); return symbol(sym.NEW);}
-"this"				{ printToken("THIS"); return symbol(sym.THIS);}
+"if"				{ printWithLineNumber("IF"); return symbol(sym.IF);}
+"else"				{ printWithLineNumber("ELSE"); return symbol(sym.ELSE);}
+"while"				{ printWithLineNumber("WHILE"); return symbol(sym.WHILE);}
+"continue"			{ printWithLineNumber("CONTINUE"); return symbol(sym.CONTINUE);}
+"break"				{ printWithLineNumber("BREAK"); return symbol(sym.BREAK);}
+"class"				{ printWithLineNumber("CLASS"); return symbol(sym.CLASS);}
+"extends"			{ printWithLineNumber("EXTENDS"); return symbol(sym.EXTENDS);}
+"return"			{ printWithLineNumber("RETURN"); return symbol(sym.RETURN);}
+"static"			{ printWithLineNumber("STATIC"); return symbol(sym.STATIC);}
+"length"			{ printWithLineNumber("LENGTH"); return symbol(sym.LENGTH);}
+"new"				{ printWithLineNumber("NEW"); return symbol(sym.NEW);}
+"this"				{ printWithLineNumber("THIS"); return symbol(sym.THIS);}
 
-"void"				{ printToken("VOID"); return symbol(sym.VOID);}
-"int"				{ printToken("INT"); return symbol(sym.INT);}
-"string"			{ printToken("STRING");return symbol(sym.STRING);}
-"boolean"			{ printToken("BOOLEAN"); return symbol(sym.BOOLEAN);}
-"true"				{ printToken("TRUE"); return symbol(sym.TRUE);}
-"false"				{ printToken("FALSE"); return symbol(sym.FALSE);}
-"null"				{ printToken("NULL"); return symbol(sym.NULL);}
+"void"				{ printWithLineNumber("VOID"); return symbol(sym.VOID);}
+"int"				{ printWithLineNumber("INT"); return symbol(sym.INT);}
+"string"			{ printWithLineNumber("STRING");return symbol(sym.STRING);}
+"boolean"			{ printWithLineNumber("BOOLEAN"); return symbol(sym.BOOLEAN);}
+"true"				{ printWithLineNumber("TRUE"); return symbol(sym.TRUE);}
+"false"				{ printWithLineNumber("FALSE"); return symbol(sym.FALSE);}
+"null"				{ printWithLineNumber("NULL"); return symbol(sym.NULL);}
 
-"="					{ printToken("ASSIGN"); return symbol(sym.ASSIGN);}
+"="					{ printWithLineNumber("ASSIGN"); return symbol(sym.ASSIGN);}
 
-"=="				{ printToken("EQUAL"); return symbol(sym.EQUAL);}
-"!="				{ printToken("NEQUAL"); return symbol(sym.NEQUAL);}				
-"!"					{ printToken("LNEG"); return symbol(sym.LNEG);}
-"&&"				{ printToken("LAND"); return symbol(sym.LAND);}
-"||"				{ printToken("LOR"); return symbol(sym.LOR);}
+"=="				{ printWithLineNumber("EQUAL"); return symbol(sym.EQUAL);}
+"!="				{ printWithLineNumber("NEQUAL"); return symbol(sym.NEQUAL);}				
+"!"					{ printWithLineNumber("LNEG"); return symbol(sym.LNEG);}
+"&&"				{ printWithLineNumber("LAND"); return symbol(sym.LAND);}
+"||"				{ printWithLineNumber("LOR"); return symbol(sym.LOR);}
 
-">"					{ printToken("GT"); return symbol(sym.GT);}
-">="				{ printToken("GTE"); return symbol(sym.GTE);}
-"<"					{ printToken("LT"); return symbol(sym.LT);}
-"<="				{ printToken("LTE"); return symbol(sym.LTE);}
+">"					{ printWithLineNumber("GT"); return symbol(sym.GT);}
+">="				{ printWithLineNumber("GTE"); return symbol(sym.GTE);}
+"<"					{ printWithLineNumber("LT"); return symbol(sym.LT);}
+"<="				{ printWithLineNumber("LTE"); return symbol(sym.LTE);}
 
-"."					{ printToken("DOT"); return symbol(sym.DOT);}
-","					{ printToken("COMMA"); return symbol(sym.COMMA);}
-";"					{ printToken("SEMI"); return symbol(sym.SEMI);}
+"."					{ printWithLineNumber("DOT"); return symbol(sym.DOT);}
+","					{ printWithLineNumber("COMMA"); return symbol(sym.COMMA);}
+";"					{ printWithLineNumber("SEMI"); return symbol(sym.SEMI);}
 
-"-"					{ printToken("MINUS");      return symbol(sym.MINUS);}
-"+"					{ printToken("PLUS");      return symbol(sym.PLUS);}
-"*"					{ printToken("MULTIPLY");     return symbol(sym.MULTIPLY);}
+"-"					{ printWithLineNumber("MINUS");      return symbol(sym.MINUS);}
+"+"					{ printWithLineNumber("PLUS");      return symbol(sym.PLUS);}
+"*"					{ printWithLineNumber("MULTIPLY");     return symbol(sym.MULTIPLY);}
 
-"/"					{ printToken("DIVIDE");    return symbol(sym.DIVIDE);}
-"%"					{ printToken("MOD");    return symbol(sym.MOD);}
+"/"					{ printWithLineNumber("DIVIDE");    return symbol(sym.DIVIDE);}
+"%"					{ printWithLineNumber("MOD");    return symbol(sym.MOD);}
 
-"("					{ printToken("LP");    return symbol(sym.LP);}
-")"					{ printToken("RP");    return symbol(sym.RP);}
-"["					{ printToken("LB");    return symbol(sym.LB);}
-"]"					{ printToken("RB");    return symbol(sym.RB);}
-"{"					{ printToken("LCBR");    return symbol(sym.LCBR);}
-"}"					{ printToken("RCBR");   return symbol(sym.RCBR);}
+"("					{ printWithLineNumber("LP");    return symbol(sym.LP);}
+")"					{ printWithLineNumber("RP");    return symbol(sym.RP);}
+"["					{ printWithLineNumber("LB");    return symbol(sym.LB);}
+"]"					{ printWithLineNumber("RB");    return symbol(sym.RB);}
+"{"					{ printWithLineNumber("LCBR");    return symbol(sym.LCBR);}
+"}"					{ printWithLineNumber("RCBR");   return symbol(sym.RCBR);}
 
+"/*"              	{ yybegin(COMMENTS);}
+
+<<EOF>>				{ printWithLineNumber("EOF");	return  symbol(sym.EOF);}
 
 {QUOTE}				{
-						printToken("QUOTE("+yytext()+")");
-						/*
-						System.out.print((yyline+1)+ ": QUOTE(");
-						System.out.print(yytext());
-						System.out.print(")\n");
-						*/
+						printWithLineNumber("QUOTE("+yytext()+")");
 						return symbol(sym.QUOTE, new String(yytext()));
-					}		
-					
-{COMMENT}		
-					{
+					}
+										
+{QUOTE_UNCLOSED}	{	 printErrorAndExit("String missing closing quote symbol"); }	
 						
-					}			
 {INTEGER}			{
-						printToken("INTEGER("+yytext()+")");
-						/*
-						System.out.print((yyline+1)+ ": INTEGER(");
-						System.out.print(yytext());
-						System.out.print(")\n");
-						*/
+						printWithLineNumber("INTEGER("+yytext()+")");
 						return symbol(sym.INTEGER, new Integer(yytext()));
 					}   
+					
 {IDENTIFIER}		{
-						printToken("ID("+yytext()+")");
-						/*
-						System.out.print((yyline+1)+ ": ID(");
-						System.out.print(yytext());
-						System.out.print(")\n");
-						*/
+						printWithLineNumber("ID("+yytext()+")");
 						return symbol(sym.ID, new String(yytext()));
 					}
+			
 {CLASS_IDENTIFIER}	{
-						printToken("CLASS_ID("+yytext()+")");
-						/*
-						System.out.print((yyline+1)+ ": CLASS_ID(");
-						System.out.print(yytext());
-						System.out.print(")\n");
-						*/
+						printWithLineNumber("CLASS_ID("+yytext()+")");
 						return symbol(sym.CLASS_ID, new String(yytext())); 
 					}
-{WhiteSpace}		{ /* just skip what was found, do nothing */ }   
+
+{COMMENT_LINE} 		{ /* skip comment */ }
+
+{WhiteSpace}		{ /* just skip what was found, do nothing */ }
+
+.					{  printErrorAndExit("Illegal character '" + yytext() +"'");}
+   
+}
+
+<COMMENTS> {
+	 "*/"      	{ yybegin(YYINITIAL);}
+     .|{LineTerminator}		   {/* everything is alowed inside comments */}
+     <<EOF>>	{  printErrorAndExit("Unclosed comment");}
 }
