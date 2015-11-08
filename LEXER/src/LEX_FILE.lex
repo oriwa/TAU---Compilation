@@ -60,9 +60,10 @@ import java_cup.runtime.*;
     private Symbol symbol(int type)               {return new Symbol(type, yyline, yycolumn);}
     private Symbol symbol(int type, Object value) {return new Symbol(type, yyline, yycolumn, value);}
     private void printWithLineNumber(String token){ System.out.println((yyline+1)+": " + token);}
-    private Symbol printErrorAndExit(String error){ 
+    private void printErrorAndExit(String error){ 
     	printWithLineNumber("Lexical error: " + error);
-    	return symbol(sym.EOF);
+    	// exits program with error code
+    	System.exit(1);
     }
     
 %}
@@ -160,7 +161,7 @@ COMMENT_LINE		= \/\/.*
 						return symbol(sym.QUOTE, new String(yytext()));
 					}
 										
-{QUOTE_UNCLOSED}	{	return printErrorAndExit("String missing closing quote symbol"); }	
+{QUOTE_UNCLOSED}	{	 printErrorAndExit("String missing closing quote symbol"); }	
 						
 {INTEGER}			{
 						printWithLineNumber("INTEGER("+yytext()+")");
@@ -181,12 +182,12 @@ COMMENT_LINE		= \/\/.*
 
 {WhiteSpace}		{ /* just skip what was found, do nothing */ }
 
-.					{ return printErrorAndExit("Illegal character '" + yytext() +"'");}
+.					{  printErrorAndExit("Illegal character '" + yytext() +"'");}
    
 }
 
 <COMMENTS> {
 	 "*/"      	{ yybegin(YYINITIAL);}
      .|{LineTerminator}		   {/* everything is alowed inside comments */}
-     <<EOF>>	{ return printErrorAndExit("Unclosed comment");}
+     <<EOF>>	{  printErrorAndExit("Unclosed comment");}
 }
