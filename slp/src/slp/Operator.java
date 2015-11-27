@@ -3,7 +3,7 @@ package slp;
 /** An enumeration containing all the operation types in the SLP language.
  */
 public enum Operator {
-	MINUS, PLUS, MULT, DIV, MOD, LT, GT, LTE, GTE, EQUAL,NEQUAL, LAND, LOR, LNEG;
+	MINUS, PLUS, MULTIPLY, DIVIDE, MOD, LT, GT, LTE, GTE, EQUAL,NEQUAL, LAND, LOR, LNEG;
 	
 	/** Prints the operator in the same way it appears in the program.
 	 */
@@ -11,8 +11,8 @@ public enum Operator {
 		switch (this) {
 		case MINUS: return "subtraction";
 		case PLUS: return "addition";
-		case MULT: return "multiplication";
-		case DIV: return "division";
+		case MULTIPLY: return "multiplication";
+		case DIVIDE: return "division";
 		case MOD: return "modulus";
 		case LT: return "less than";
 		case GT: return "greater than";
