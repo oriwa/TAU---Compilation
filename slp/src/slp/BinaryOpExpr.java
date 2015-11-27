@@ -43,8 +43,8 @@ public class BinaryOpExpr extends Expr {
 		switch(op){
 		case MINUS:
 		case PLUS:
-		case MULT:
-		case DIV:
+		case MULTIPLY:
+		case DIVIDE:
 		case MOD:
 			return mathOp+op;
 		default:

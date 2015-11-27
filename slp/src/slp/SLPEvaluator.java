@@ -73,7 +73,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		int rhsInt = rhsValue.intValue();
 		int result;
 		switch (expr.op) {
-		case DIV:
+		case DIVIDE:
 			if (rhsInt == 0)
 				throw new RuntimeException("Attempt to divide by zero: " + expr);
 			result = lhsInt / rhsInt;
@@ -81,7 +81,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		case MINUS:
 			result = lhsInt - rhsInt;
 			break;
-		case MULT:
+		case MULTIPLY:
 			result = lhsInt * rhsInt;
 			break;
 		case PLUS:

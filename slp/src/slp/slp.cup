@@ -83,7 +83,7 @@ non terminal Method method;
 non terminal Field field;
 non terminal ExtraIDs extraIDs;
 non terminal Type type; 
-
+non terminal Operator unop, binop;
 /***************/
 /* PRECEDENCES */
 /***************/
@@ -162,8 +162,8 @@ formalsList ::= formalsList:flst COMMA type:t ID:id
 		{:RESULT= new FormalsList(); RESULT.addStmt(new Formals(idleft,t,id));:}
 ;
 
-type ::= BOOLEAN:bol
-		{:RESULT = new Type(bolleft); RESULT.setName("boolean");:}
+type ::= BOOLEAN:bool
+		{:RESULT = new Type(boolleft); RESULT.setName("boolean");:}
 		|INT:in
 		{:RESULT = new Type(inleft); RESULT.setName("int");:}
 		|STRING:str
@@ -229,41 +229,15 @@ expr ::= THIS
 		{:RESULT= new LocationExpr(loc);:}
 		
 		/*operators*/
+
+		|unop:op expr:e
+		{:RESULT = new UnaryOpExpr(opleft,e,op);:} %prec UMINUS
 		
-		|LNEG:op expr:e
-		{:RESULT = new UnaryOpExpr(opleft,e,Operator.LNEG);:} %prec UMINUS
-		|MINUS:op expr:e
-		{:RESULT = new UnaryOpExpr(opleft,e,Operator.MINUS);:} %prec UMINUS
+		| expr:e2 binop:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,op);:}
 		
-		| expr:e2 MINUS:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.MINUS);:}
-		| expr:e2 PLUS:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.PLUS);:}
-		| expr:e2 MULTIPLY:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.MULT);:}
-		| expr:e2 DIVIDE:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.DIV);:}
-		| expr:e2 MOD:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.MOD);:}
-		| expr:e2 LT:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.LT);:}
-		| expr:e2 GT:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.GT);:}
-		| expr:e2 LTE:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.LTE);:}
-		| expr:e2 GTE:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.GTE);:}
-		| expr:e2 EQUAL:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.EQUAL);:}
-		| expr:e2 NEQUAL:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.NEQUAL);:}
-		| expr:e2 LAND:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.LAND);:}
-		| expr:e2 LOR:op expr:e1
-		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.LOR);:}
+		/*literals*/
 		
-		
-		//literals
 		|INTEGER:n
 		{: RESULT = new NumberExpr(nleft,n.intValue()); :}
 		| QUOTE:s
@@ -304,4 +278,41 @@ exprList ::=  exprList:el COMMA expr:e
 		{:el.addExpr(e); RESULT=el;:}
 		| expr:e
 		{:RESULT=new ExprList(); RESULT.addExpr(e);:}
+;
+
+
+/* operations */
+
+unop ::= MINUS
+		{: RESULT = Operator.MINUS; :}
+		|LNEG
+		{: RESULT = Operator.LNEG; :} 
+;
+
+binop ::= PLUS
+		{: RESULT = Operator.PLUS; :}
+		| MINUS
+		{: RESULT = Operator.MINUS; :}
+		| MULTIPLY
+		{: RESULT = Operator.MULTIPLY; :}
+		| DIVIDE
+		{: RESULT = Operator.DIVIDE; :}
+		| MOD
+		{: RESULT = Operator.MOD; :}
+		| LT
+		{: RESULT = Operator.LT; :}
+		| GT
+		{: RESULT = Operator.GT; :}
+		| LTE
+		{: RESULT = Operator.LTE; :}
+		| GTE
+		{: RESULT = Operator.GTE; :}
+		| EQUAL
+		{: RESULT = Operator.EQUAL; :}
+		| NEQUAL
+		{: RESULT = Operator.NEQUAL; :}
+		| LAND
+		{: RESULT = Operator.LAND; :}
+		| LOR
+		{: RESULT = Operator.LOR; :}
 ;
