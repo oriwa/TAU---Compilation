@@ -1,0 +1,307 @@
+package slp;
+
+import java_cup.runtime.*;
+
+parser code  {:
+	/** Causes the parsr to print every token it reads.
+	 * This is useful for debugging.
+	 */
+	public boolean printTokens;
+	
+	private Lexer lexer;
+
+	public Parser(Lexer lexer) {
+		super(lexer);
+		this.lexer = lexer;
+	}
+	
+	public int getLine() {
+		return lexer.getLineNumber();
+	}
+	
+	public void syntax_error(Symbol s) {
+		Token tok = (Token) s;
+		System.out.println("Line " + tok.getLine()+": Syntax error; unexpected " + tok);
+	}
+:}
+
+// This is just for debugging
+scan with {:
+	Token t = lexer.next_token();
+	if (printTokens)
+		System.out.println(t.getLine() + ":" + t);
+	return t; 
+:};
+
+/**********************/
+/* TERMINALS (TOKENS) */
+/**********************/
+
+terminal  UMINUS, ELSE_OP; 					//phonies
+terminal  PLUS,MINUS,MULTIPLY, DIVIDE, MOD; 	//mathematical ops
+terminal  GT, GTE, LT, LTE, EQUAL, NEQUAL; 	//comparison ops
+terminal  LNEG, LAND, LOR;					//boolean ops
+
+
+terminal VOID, INT, STRING, BOOLEAN; 		//types
+
+/*literals*/
+terminal NULL;
+terminal String QUOTE;
+terminal Integer INTEGER;
+terminal Boolean FALSE, TRUE;
+
+terminal  SEMI, COMMA, DOT, ASSIGN;			//punctuation actions
+terminal  LB, RB, LP, RP, LCBR, RCBR;		//brackets\curly bracket and parenthesis 
+terminal  CONTINUE, BREAK, WHILE, IF, ELSE; 	//logic flow keywords
+terminal String CLASS_ID, ID; 		//identifiers
+
+/*other keywords*/
+terminal Symbol CLASS, EXTENDS, RETURN, STATIC, THIS, LENGTH, NEW; 
+
+/***************************/
+/* NON TERMINALS (SYMBOLS) */
+/***************************/
+
+
+non terminal Location location;
+non terminal ExprList exprList;
+//non terminal CallArgs callArgs;
+non terminal VirtualCall virtualCall;
+non terminal StaticCall staticCall;
+non terminal Call call;
+non terminal Expr expr;
+non terminal Stmt stmt;
+non terminal StmtList stmtList;
+non terminal FormalsList formalsList;
+non terminal FormalsList methodFormals;
+non terminal Program program;
+non terminal ClassList classList;
+non terminal Class class;
+non terminal DclrList dclrList;
+non terminal Method method;
+non terminal Field field;
+non terminal ExtraIDs extraIDs;
+non terminal Type type; 
+
+/***************/
+/* PRECEDENCES */
+/***************/
+
+precedence left ELSE;
+precedence right ASSIGN;
+precedence left LOR;
+precedence left LAND;
+precedence left EQUAL, NEQUAL;
+precedence left LT, GT, LTE, GTE;
+precedence left PLUS, MINUS;
+precedence left MULTIPLY, DIVIDE, MOD; 
+precedence right UMINUS, LNEG;
+precedence left LB, LP, DOT;
+
+
+/*******************/
+/* RULES & ACTIONS */
+/*******************/
+
+program ::= classList:cl
+		{:RESULT = new Program(cl);/*root assignment?*/:}
+;
+classList ::= classList:cl class:c
+		{:cl.addClass(c);RESULT=cl;:}
+		|
+		{:RESULT = new ClassList();:}
+;
+
+	
+class ::= CLASS CLASS_ID:id LCBR dclrList:dclrl RCBR
+		{:RESULT= new Class(idleft,id,dclrl);:}
+		|CLASS:tok CLASS_ID:id EXTENDS CLASS_ID:idext dclrList:dclrl LCBR RCBR
+		{:RESULT= new Class(idleft,id,idext,dclrl);:}
+; 
+
+dclrList ::= dclrList:dl field:f
+		{:dl.addDclr(f); RESULT=dl;:}
+		| dclrList:dl method:m
+		{:dl.addDclr(m); RESULT=dl;:}
+		|
+		{:RESULT=new DclrList();:}
+;
+
+field ::= type:t ID:id extraIDs:exIDs SEMI
+		{:RESULT = new Field(idleft,t,id,exIDs);:}
+;
+
+
+extraIDs ::= extraIDs:exIDs COMMA ID:id
+		{:exIDs.addID(id); RESULT=exIDs;:}
+		|
+		{:RESULT = new ExtraIDs();:}
+;
+method ::=  STATIC type:t ID:id LP methodFormals:mf RP LCBR stmtList:sl RCBR
+		{:RESULT = new Method(idleft,true,t,id,mf,sl);:}
+		|STATIC VOID ID:id LP methodFormals:mf RP LCBR stmtList:sl RCBR
+		{:RESULT = new Method(idleft,true,null,id,mf,sl);:}
+		|type:t ID:id LP methodFormals:mf RP LCBR stmtList:sl RCBR
+		{:RESULT = new Method(idleft,false,t,id,mf,sl);:}
+		|VOID ID:id LP methodFormals:mf RP LCBR stmtList:sl RCBR
+		{:RESULT = new Method(idleft,false,null,id,mf,sl);:}
+;
+
+
+methodFormals ::= formalsList:fl
+		{:RESULT = fl;:}
+		|
+		{:RESULT = new FormalsList();:}
+;
+		
+
+formalsList ::= formalsList:flst COMMA type:t ID:id
+		{:flst.addStmt(new Formals(idleft,t,id));RESULT=flst;:}
+		| type:t ID:id
+		{:RESULT= new FormalsList(); RESULT.addStmt(new Formals(idleft,t,id));:}
+;
+
+type ::= BOOLEAN:bol
+		{:RESULT = new Type(bolleft); RESULT.setName("boolean");:}
+		|INT:in
+		{:RESULT = new Type(inleft); RESULT.setName("int");:}
+		|STRING:str
+		{:RESULT = new Type(strleft); RESULT.setName("string");:}
+		|CLASS_ID:cid
+		{:RESULT = new Type(cidleft); RESULT.setName(cid);:}
+		|type:t LB RB
+		{:t.addDimension(); RESULT=t;:}
+;
+
+
+stmtList ::= stmtList:sl stmt:s
+		{:	sl.addStmt(s); RESULT=sl;:}
+		|
+		{:	RESULT=new StmtList();:}
+;
+
+stmt ::= CONTINUE:cont SEMI
+		{:RESULT = new ContinueStmt(contleft);:}
+		|BREAK:bre SEMI
+		{:RESULT = new BreakStmt(breleft);:}
+		|LCBR:lcbr stmtList:sl RCBR
+		{:sl.line=lcbrleft;RESULT=sl;:}
+		|type:t ID:id ASSIGN expr:ex SEMI
+		{:RESULT = new DeclarationStmt(idleft,t,id,ex);:}
+		|type:t ID:id SEMI
+		{:RESULT = new DeclarationStmt(idleft,t,id);:}
+		| WHILE:whi LP expr:e RP stmt:s
+		{:RESULT = new WhileStmt(whileft,e,s);:}
+		| IF:ifexp LP expr:e RP stmt:thenStmt
+		{:RESULT = new IfStmt(ifexpleft,e,thenStmt);:} %prec ELSE_OP
+		| IF:ifexp LP expr:e RP stmt:thenStmt ELSE stmt:elseStmt
+		{:RESULT = new IfStmt(ifexpleft,e,thenStmt,elseStmt);:}
+		|call:c SEMI:semi
+		{:RESULT = new CallStmt(semileft,c);:}
+		| location:loc ASSIGN:assign expr:e SEMI
+		{:RESULT = new AssignStmt(assignleft,loc,e);:}
+		| RETURN:ret SEMI
+		{:RESULT = new ReturnStmt(retleft);:}
+		| RETURN:ret expr:e SEMI
+		{:RESULT = new ReturnStmt(retleft,e);:}
+;
+location ::= ID:id
+		{:RESULT = new VarExpr(idleft,id);:}
+		|expr:e DOT ID:id
+		{:RESULT = new VarExpr(idleft,e,id);:}
+		|expr:arr LB:lb expr:index RB
+		{:RESULT = new ArrayVarExpr(lbleft,arr,index);:}
+;
+expr ::= THIS
+		{:RESULT = new ThisExpr();:}
+		| LP expr:e RP
+		{:RESULT=e;:}
+		| NEW type:t LB expr:e RB
+		{:RESULT= new ArrayAllocExpr(t.line,t,e);:}
+		| NEW CLASS_ID:cid LP RP
+		{:RESULT = new InstantExpr(cidleft,cid);:}
+		|call:c
+		{:RESULT = c;:}		
+		|expr:e DOT LENGTH:len
+		{:RESULT= new ArrayLenExpr(lenleft,e);:}
+		|location:loc
+		{:RESULT= new LocationExpr(loc);:}
+		
+		/*operators*/
+		
+		|LNEG:op expr:e
+		{:RESULT = new UnaryOpExpr(opleft,e,Operator.LNEG);:} %prec UMINUS
+		|MINUS:op expr:e
+		{:RESULT = new UnaryOpExpr(opleft,e,Operator.MINUS);:} %prec UMINUS
+		
+		| expr:e2 MINUS:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.MINUS);:}
+		| expr:e2 PLUS:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.PLUS);:}
+		| expr:e2 MULTIPLY:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.MULT);:}
+		| expr:e2 DIVIDE:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.DIV);:}
+		| expr:e2 MOD:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.MOD);:}
+		| expr:e2 LT:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.LT);:}
+		| expr:e2 GT:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.GT);:}
+		| expr:e2 LTE:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.LTE);:}
+		| expr:e2 GTE:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.GTE);:}
+		| expr:e2 EQUAL:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.EQUAL);:}
+		| expr:e2 NEQUAL:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.NEQUAL);:}
+		| expr:e2 LAND:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.LAND);:}
+		| expr:e2 LOR:op expr:e1
+		{:RESULT = new BinaryOpExpr(opleft,e1,e2,Operator.LOR);:}
+		
+		
+		//literals
+		|INTEGER:n
+		{: RESULT = new NumberExpr(nleft,n.intValue()); :}
+		| QUOTE:s
+		{: RESULT = new StringExpr(sleft,s); :}
+		| TRUE:t
+		{: RESULT = new BooleanExpr(tleft,true); :}
+		| FALSE:f
+		{: RESULT = new BooleanExpr(fleft,false); :}
+		| NULL:nu
+		{:RESULT=new NullExpr(nuleft);:}
+;		
+
+call ::= staticCall:call
+		{:RESULT=call;:}
+		|virtualCall:call
+		{:RESULT=call;:}
+;
+staticCall  ::= CLASS_ID:className DOT ID:smethodName LP exprList:args RP
+		{:RESULT=new StaticCall(smethodNameleft,className,smethodName,args);:}
+		|CLASS_ID:className DOT ID:smethodName LP  RP
+		{:RESULT=new StaticCall(smethodNameleft,className,smethodName,new ExprList());:}
+		
+;
+
+virtualCall  ::= ID:vmethodName LP exprList:args RP
+		{:RESULT=new VirtualCall(vmethodNameleft,vmethodName,args);:}
+		|expr:callerObj DOT ID:vmethodName LP exprList:args RP
+		{:RESULT=new VirtualCall(vmethodNameleft,callerObj,vmethodName,args);:}
+		|ID:vmethodName LP RP
+		{:RESULT=new VirtualCall(vmethodNameleft,vmethodName,new ExprList());:}
+		|expr:callerObj DOT ID:vmethodName LP  RP
+		{:RESULT=new VirtualCall(vmethodNameleft,callerObj,vmethodName,new ExprList());:}
+;
+
+
+
+exprList ::=  exprList:el COMMA expr:e
+		{:el.addExpr(e); RESULT=el;:}
+		| expr:e
+		{:RESULT=new ExprList(); RESULT.addExpr(e);:}
+;
