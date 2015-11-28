@@ -116,7 +116,7 @@ classList ::= classList:cl class:c
 	
 class ::= CLASS CLASS_ID:id LCBR dclrList:dclrl RCBR
 		{:RESULT= new Class(idleft,id,dclrl);:}
-		|CLASS:tok CLASS_ID:id EXTENDS CLASS_ID:idext dclrList:dclrl LCBR RCBR
+		|CLASS:tok CLASS_ID:id EXTENDS CLASS_ID:idext LCBR dclrList:dclrl RCBR
 		{:RESULT= new Class(idleft,id,idext,dclrl);:}
 ; 
 
