@@ -16,7 +16,8 @@ public class DclrList extends ASTNode {
 	 * @param stmt A program statement.
 	 */
 	public void addDclr(Dclr dclr) {
-		declarations.add(dclr);
+		if (dclr != null)
+			declarations.add(dclr);
 	}
 
 	/** Accepts a visitor object as part of the visitor pattern.

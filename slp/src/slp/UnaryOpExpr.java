@@ -38,7 +38,7 @@ public class UnaryOpExpr extends Expr {
 	
 	public String toString() {
 		if(op==Operator.MINUS) return  line+": Mathematical unary operation: minus";
-		if(op==Operator.LNEG) return  line+": Logical unary operation: negatiion";
-		return line+": ERROR: unary operation not negation or subtraction";
+		if(op==Operator.LNEG) return  line+": Logical unary operation: negation";
+		return line+": ERROR: unary operation is invalid";
 	}
 }

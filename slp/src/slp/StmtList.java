@@ -19,7 +19,8 @@ public class StmtList extends Stmt {
 	 * @param stmt A program statement.
 	 */
 	public void addStmt(Stmt stmt) {
-		statements.add(stmt);
+		if (stmt != null)
+			statements.add(stmt);
 	}
 
 	/** Accepts a visitor object as part of the visitor pattern.
