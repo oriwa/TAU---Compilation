@@ -11,8 +11,6 @@ public class Method extends Dclr {
 	public final String name;
 	public final FormalsList formalsList;
 	public final StmtList stmtList;
-	
-	
 
 	public Method(int line,boolean isStatic,Type type,String name,FormalsList formalsList,StmtList stmtList)
 	{
@@ -50,10 +48,8 @@ public class Method extends Dclr {
 	
 	public String toString() {
 		
-		if(isStatic)
-			return line+": Declaration of static method: "+ name;
-		else
-			return line+": Declaration of virtual method: "+ name;
+		String methodType = isStatic ? "static" : "virtual";
+		return line+": Declaration of " + methodType + " method: "+ name;
 	
 	}	
 }

@@ -14,7 +14,8 @@ public class ClassList extends ASTNode {
 	 * @param clss A program class.
 	 */
 	public void addClass(Class clss) {
-		classes.add(clss);
+		if (clss != null)
+			classes.add(clss);
 	}
 
 	/** Accepts a visitor object as part of the visitor pattern.
