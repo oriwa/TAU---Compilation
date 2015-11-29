@@ -116,10 +116,8 @@ classList ::= classList:cl class:c
 	
 class ::= CLASS CLASS_ID:id LCBR dclrList:dclrl RCBR
 		{:RESULT= new Class(idleft,id,dclrl);:}
-		|CLASS:tok CLASS_ID:id EXTENDS CLASS_ID:idext dclrList:dclrl LCBR RCBR
+		|CLASS:tok CLASS_ID:id EXTENDS CLASS_ID:idext LCBR dclrList:dclrl RCBR
 		{:RESULT= new Class(idleft,id,idext,dclrl);:}
-		| error:e
-		{: parser.report_error("Line " + eleft + ": Syntax error. Illegal class declaration.\n",e); :}
 ; 
 
 dclrList ::= dclrList:dl field:f
@@ -207,8 +205,6 @@ stmt ::= CONTINUE:cont SEMI
 		{:RESULT = new ReturnStmt(retleft);:}
 		| RETURN:ret expr:e SEMI
 		{:RESULT = new ReturnStmt(retleft,e);:}
-		| error:e
-		{: parser.report_error("Line " + eleft + ": Syntax error. Illegal statement.\n",e); :}
 ;
 location ::= ID:id
 		{:RESULT = new VarExpr(idleft,id);:}
