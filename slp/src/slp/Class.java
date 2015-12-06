@@ -8,6 +8,7 @@ public class Class extends ASTNode {
 	public final String name;
 	public final String extends_name;
 	public final DclrList dclrList;
+	public Class extends_class;
 	
 	public Class(int line,String name,DclrList dclrList) {
 		this.line = line;

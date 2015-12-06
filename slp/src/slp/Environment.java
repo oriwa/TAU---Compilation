@@ -5,12 +5,31 @@ import java.util.*;
 /** Represents a state during the evaluation of a program. 
  */
 public class Environment {
+	
+	
+
+	private static final String[] PRIMITIVE_TYPES={"int","boolean","string"};
+	
 	/** Maps the names of variables to integer values.
 	 * The same variable may appear in different VarExpr objects.  We use the
 	 * name of the variable as a way of ensuring we a consistent mapping
 	 * for each variable. 
 	 */
 	private Map<String,Integer> varToValue = new HashMap<String,Integer>();
+	
+	private ArrayList<TypeEntry> typeTable=new ArrayList<TypeEntry>();
+	private Map<String,TypeEntry> typeTableMap = new HashMap<String,TypeEntry>();
+	
+	private Class currentClass;
+	private Method currentMethod;
+	private boolean isInLoop;
+	private int mainMethodNumber=0;
+	
+	
+	public Environment()
+	{
+		initPrimitiveTypeEntrys();
+	}
 	
 	/** Updates the value of a variable.
 	 * 
@@ -36,4 +55,78 @@ public class Environment {
 		}
 		return varToValue.get(v.name);
 	}
+	
+	
+	
+	
+	private void initPrimitiveTypeEntrys()
+	{
+		for (String type : PRIMITIVE_TYPES) {
+			addTypeEntry(new TypeEntry(typeTable.size()-1,type));
+		}
+	}
+	
+	private void addTypeEntry(TypeEntry typeEntry)
+	{
+		typeTable.add(typeEntry);
+		typeTableMap.put(typeEntry.getEntryName(), typeEntry);
+		
+	}
+	
+	public TypeEntry addTypeEntry(Class clss)
+	{
+		TypeEntry typeEntry=new TypeEntry(typeTable.size()-1,clss.name,clss);
+		addTypeEntry(typeEntry);
+		return typeEntry;		 
+	}
+	
+	
+	public TypeEntry getTypeEntry(int id)
+	{
+		if(typeTable.size()>id)
+			return typeTable.get(id);
+		return null;
+	}
+	
+	public TypeEntry getTypeEntry(String name)
+	{
+		if(typeTableMap.containsKey(name))
+			return typeTableMap.get(name);
+		return null;
+	}
+
+	public Class getCurrentClass() {
+		return currentClass;
+	}
+
+	public void setCurrentClass(Class currentClass) {
+		this.currentClass = currentClass;
+	}
+
+	public Method getCurrentMethod() {
+		return currentMethod;
+	}
+
+	public void setCurrentMethod(Method currentMethod) {
+		this.currentMethod = currentMethod;
+	}
+
+	public boolean getIsInLoop() {
+		return isInLoop;
+	}
+
+	public void setIsInLoop(boolean isInLoop) {
+		this.isInLoop = isInLoop;
+	}
+
+	public int getMainMethodNumber() {
+		return mainMethodNumber;
+	}
+
+	public void addMainMethodNumber() {
+		mainMethodNumber++;
+	}
+	
+	
+	
 }

@@ -22,6 +22,12 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		root.accept(this, env);
 	}
 	
+	private void handleSemanticError(String error,ASTNode node)
+	{
+		
+	}
+	
+	
 	public Integer visit(StmtList stmts, Environment env) {
 		for (Stmt st : stmts.statements) {
 			st.accept(this, env);
@@ -111,22 +117,51 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		return new Integer(result);
 	}
 
-	public Integer visit(Program program, Environment d) {
-		// TODO Auto-generated method stub
+	public Integer visit(Program program, Environment env) {
+		InitTypeTable(program.classList,env);
+		program.classList.accept(this, env);
+		//TODO:Error
+		if(env.getMainMethodNumber()==0)
+			handleSemanticError("",program);
+		if(env.getMainMethodNumber()>1)
+			handleSemanticError("",program);
 		return null;
 	}
 
-	public Integer visit(ClassList classes, Environment d) {
-		// TODO Auto-generated method stub
+	private void InitTypeTable(ClassList classList, Environment env) {
+		for (Class clss : classList.classes) {
+			if(clss.extends_name!=null)
+			{
+				TypeEntry extendsTypeEntry= env.getTypeEntry(clss.extends_name);
+				if(extendsTypeEntry!=null)
+				{
+					clss.extends_class=extendsTypeEntry.getEntryClass();
+				}
+				else
+				{
+					//TODO:Error
+					handleSemanticError("",clss);
+				}
+			}
+			env.addTypeEntry(clss);
+		}		
+	}
+
+	public Integer visit(ClassList classes, Environment env) {
+		for (Class clss : classes.classes) {
+			clss.accept(this, env);
+		}
 		return null;
 	}
 
-	public Integer visit(Class clss, Environment d) {
-		// TODO Auto-generated method stub
+	public Integer visit(Class clss, Environment env) {
+		env.setCurrentClass(clss);
+		clss.dclrList.accept(this, env);
+		env.setCurrentClass(null);
 		return null;
 	}
 
-	public Integer visit(DclrList list, Environment d) {
+	public Integer visit(DclrList list, Environment env) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -141,8 +176,9 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		return null;
 	}
 
-	public Integer visit(Method method, Environment d) {
-		// TODO Auto-generated method stub
+	public Integer visit(Method method, Environment env) {
+		env.setCurrentMethod(method);
+		env.setCurrentMethod(null);
 		return null;
 	}
 
@@ -176,8 +212,10 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		return null;
 	}
 
-	public Integer visit(WhileStmt whileStmt, Environment d) {
-		// TODO Auto-generated method stub
+	public Integer visit(WhileStmt whileStmt, Environment env) {
+		env.setIsInLoop(true);
+		
+		env.setIsInLoop(false);
 		return null;
 	}
 

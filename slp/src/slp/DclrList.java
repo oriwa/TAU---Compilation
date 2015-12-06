@@ -7,17 +7,27 @@ import java.util.List;
 /** An AST node for a list of declarations.
  */
 public class DclrList extends ASTNode {
-	public final List<Dclr> declarations = new ArrayList<Dclr>();
+	public final List<Field> fields = new ArrayList<Field>();
+	public final List<Method> methods = new ArrayList<Method>();
 	
 
 
-	/** Adds a statement to the tail of the list.
+	/** Adds a method to the tail of the list.
 	 * 
-	 * @param stmt A program statement.
+	 * @param method A program method.
 	 */
-	public void addDclr(Dclr dclr) {
-		if (dclr != null)
-			declarations.add(dclr);
+	public void addMethod(Method method) {
+		if (method != null)
+			methods.add(method);
+	}
+	
+	/** Adds a field to the tail of the list.
+	 * 
+	 * @param field A program field.
+	 */
+	public void addField(Field field) {
+		if (field != null)
+			fields.add(field);
 	}
 
 	/** Accepts a visitor object as part of the visitor pattern.
