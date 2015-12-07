@@ -121,9 +121,9 @@ class ::= CLASS CLASS_ID:id LCBR dclrList:dclrl RCBR
 ; 
 
 dclrList ::= dclrList:dl field:f
-		{:dl.addDclr(f); RESULT=dl;:}
+		{:dl.addField(f); RESULT=dl;:}
 		| dclrList:dl method:m
-		{:dl.addDclr(m); RESULT=dl;:}
+		{:dl.addMethod(m); RESULT=dl;:}
 		|
 		{:RESULT=new DclrList();:}
 ;
