@@ -1,13 +1,18 @@
 package slp;
 
 import java.util.*;
+
 import slp.SymbolEntry.ReferenceRole;
 
 /** Represents a state during the evaluation of a program. 
  */
 public class Environment {
 	
-	private static final String[] PRIMITIVE_TYPES={"int","boolean","string"};
+	public static final String INT="int";
+	public static final String BOOLEAN="boolean";
+	public static final String STRING="string";
+
+	private static final String[] PRIMITIVE_TYPES={INT,BOOLEAN,STRING};
 	
 	
 	/** Maps the names of variables to integer values.
@@ -29,34 +34,38 @@ public class Environment {
 	
 	private Class currentClass;
 	private Method currentMethod;
-	private boolean isInLoop;
+	private int loopDepth;
 	private int mainMethodNumber=0;
 	
 	
 	public Environment(){
 		initPrimitiveTypeEntrys();
-
-		/* i'm not sure if it's the right time for that, 
-		 * but it's imperative at least before visiting INSIDE the classes*/
-		LibraryLoader loader=new LibraryLoader();
-		loader.load(this);
 	}
+	
+	public void handleSemanticError(String error,int line)
+	{
+		System.out.println("ERROR in line +"+line+": "+error);
+		System.exit(1);
+		//throw new /*Semantic*/Exception("ERROR in line +"+line+": "+error);
+	}
+	
+	public void validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType,int line)
+	{
+		//TODO: Add inheritance support
+		if(actualType.getEntryId()!=expectedType.getEntryId())
+			handleSemanticError("type mismatch: cannot convert from "+actualType.getEntryName()+" to "+expectedType.getEntryName(),line);
+			
+	}
+	
+	public void validateTypeMismatch(String expectedTypeName,Integer actualTypeId,int line)
+	{
+		validateTypeMismatch(getTypeEntry(expectedTypeName),getTypeEntry(actualTypeId), line);
+	}
+	
 
 	
 	public void addToEnv(Class clss) throws /*Semantic*/Exception{
-		TypeEntry previousDef=getTypeEntry(clss.name);
-		if(previousDef!=null){
-			String errorMsg="ERROR: multiple definitions of class \""+clss.name+"\"";
-			String note="note: first defined in line: "+previousDef.getEntryClass().line;
-			throw new /*Semantic*/Exception(errorMsg+"\n"+note);
-		}
-		
-		if(clss.extends_class!=null){
-			if(getTypeEntry(clss.extends_class.name)==null){
-				String errorMsg="ERROR: class \""+clss.extends_class.name +"\" is undefined";
-				throw new /*Semantic*/Exception(errorMsg);
-			}
-		}
+			
 		addTypeEntry(clss);
 	}
 	
@@ -83,14 +92,13 @@ public class Environment {
 	private void addToEnv(String typeName, String SymbolId, int lineDefined,ReferenceRole role) throws /*Semantic*/Exception{
 		TypeEntry type=getTypeEntry(typeName);
 		if(type==null){
-			throw new /*Semantic*/Exception("ERROR: type \""+typeName+"\" is undefined"); 
+			handleSemanticError("type \""+typeName+"\" is undefined",lineDefined);
 		}
 		
 		if(symbolTable.isInCurrentScope(SymbolId)){
 			String errorMsg="ERROR: multiple definitions of "+SymbolId;
 			String note="note: first defined in line: "+symbolTable.getEntryByName(SymbolId).definedAt();
-			
-			throw new /*Semantic*/Exception(errorMsg+"\n"+note);
+			handleSemanticError(errorMsg+"\n"+note,lineDefined);
 		}
 		
 		SymbolEntry newSymbol= new SymbolEntry(SymbolId, type, lineDefined, role);
@@ -150,11 +158,15 @@ public class Environment {
 	}
 
 	public boolean getIsInLoop() {
-		return isInLoop;
+		return loopDepth>0;
 	}
 
 	public void setIsInLoop(boolean isInLoop) {
-		this.isInLoop = isInLoop;
+		if (isInLoop) 
+			loopDepth++;
+		else 
+			loopDepth--;
+
 	}
 
 	public int getMainMethodNumber() {

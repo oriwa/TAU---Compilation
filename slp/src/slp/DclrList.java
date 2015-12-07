@@ -7,6 +7,9 @@ import java.util.List;
 /** An AST node for a list of declarations.
  */
 public class DclrList extends ASTNode {
+	
+	
+	public final List<Dclr> declarations = new ArrayList<Dclr>();
 	public final List<Field> fields = new ArrayList<Field>();
 	public final List<Method> methods = new ArrayList<Method>();
 	
@@ -18,7 +21,11 @@ public class DclrList extends ASTNode {
 	 */
 	public void addMethod(Method method) {
 		if (method != null)
+		{
 			methods.add(method);
+			declarations.add(method);
+		}
+		
 	}
 	
 	/** Adds a field to the tail of the list.
@@ -27,7 +34,10 @@ public class DclrList extends ASTNode {
 	 */
 	public void addField(Field field) {
 		if (field != null)
+		{
 			fields.add(field);
+			declarations.add(field);
+		}
 	}
 
 	/** Accepts a visitor object as part of the visitor pattern.
