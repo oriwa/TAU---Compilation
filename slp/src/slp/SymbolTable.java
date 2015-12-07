@@ -66,12 +66,19 @@ public class SymbolTable {
 	 *  given a reference by name of a variable/argument/class member
 	 *  finds and returns the information about its declaration (of the nearest scope) 
 	 * */
-	SymbolEntry getEntryByName(String refName){
+	public SymbolEntry getEntryByName(String refName){
 		Stack<SymbolEntry> entriesForName = map.get(refName);
 		if(entriesForName !=null){
 			return entriesForName.peek();
 		}
 		return null;
+	}
+	
+	public boolean isInCurrentScope(String refName){
+		if(map.containsKey(refName)){
+			return map.get(refName).size()==scopes.size();
+		}
+		return false;
 	}
 	
 	

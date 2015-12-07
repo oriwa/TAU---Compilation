@@ -3,16 +3,19 @@ package slp;
 public  class SymbolEntry {
 	private final String entryName;
 	private final int lineOfDefinition;
-	private final Type entryType;
+	private final TypeEntry type;
+	private final ReferenceRole role;
 	
-	public SymbolEntry(String entryName, Type entryType, int lineOfDefinition){
+	public SymbolEntry(String entryName, TypeEntry typeId, int lineOfDefinition,ReferenceRole role){
 		this.entryName=entryName;
-		this.entryType=entryType;
+		this.type=typeId;
 		this.lineOfDefinition=lineOfDefinition;
+		this.role=role;
 	}
 	
-	public Type getEntryType(){
-		return entryType;
+	
+	public TypeEntry getEntryTypeID(){
+		return type;
 	}
 	
 	public String getEntryName(){
@@ -23,5 +26,11 @@ public  class SymbolEntry {
 		return lineOfDefinition;
 	}
 
-	
+	public ReferenceRole getRole() {
+		return role;
+	}
+
+	public enum ReferenceRole{
+		CLASS, FIELD, METHOD , LOCAL, ARGUMENT
+	}
 }

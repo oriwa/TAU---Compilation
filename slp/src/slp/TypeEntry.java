@@ -7,7 +7,6 @@ public class TypeEntry {
 	private final Class entryClass;
 	
 	public TypeEntry(int entryId,String entryName){
-		
 		this.entryId=entryId;
 		this.entryName=entryName;
 		this.isPrimitive=true;
