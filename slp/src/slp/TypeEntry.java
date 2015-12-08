@@ -6,11 +6,13 @@ public class TypeEntry {
 	private final boolean isPrimitive;
 	private final Class entryClass;
 	
+	
 	public TypeEntry(int entryId,String entryName){
 		this.entryId=entryId;
 		this.entryName=entryName;
 		this.isPrimitive=true;
 		this.entryClass=null;
+		
 	}
 	
 	public TypeEntry(int entryId,String entryName, Class entryClass){
@@ -19,6 +21,8 @@ public class TypeEntry {
 		this.isPrimitive=false;
 		this.entryClass=entryClass;
 	}
+	
+
 
 	public int getEntryId() {
 		return entryId;
@@ -35,6 +39,10 @@ public class TypeEntry {
 	public Class getEntryClass() {
 		return entryClass;
 	}
+
+
+	
+
 
 	
 	

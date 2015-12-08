@@ -46,15 +46,47 @@ public class Environment {
 	{
 		System.out.println("ERROR in line +"+line+": "+error);
 		System.exit(1);
-		//throw new /*Semantic*/Exception("ERROR in line +"+line+": "+error);
+		
 	}
 	
 	public void validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType,int line)
 	{
-		//TODO: Add inheritance support
-		if(actualType.getEntryId()!=expectedType.getEntryId())
+
+		if(!isDimensionEqual(expectedType,actualType) || !isA(expectedType,actualType))
 			handleSemanticError("type mismatch: cannot convert from "+actualType.getEntryName()+" to "+expectedType.getEntryName(),line);
 			
+	}
+	private boolean isDimensionEqual(TypeEntry type1, TypeEntry type2) {
+		if(type1.getClass()==type2.getClass()){
+			if(type1.getClass()==ArrayTypeEntry.class){
+				ArrayTypeEntry arr1 =(ArrayTypeEntry)type1;
+				ArrayTypeEntry arr2 =(ArrayTypeEntry)type2;
+				return arr1.getTypeDimension()==arr2.getTypeDimension();
+			}
+		}
+		ArrayTypeEntry arr;
+		if(type1.getClass()==ArrayTypeEntry.class){
+			arr =(ArrayTypeEntry)type1;
+			
+		}else{
+			arr = (ArrayTypeEntry)type2;
+		}
+		return arr.getTypeDimension()==0;
+	}
+
+	public boolean isA(TypeEntry potentialAncestor,TypeEntry potentialdescendant) {
+		if(potentialdescendant.getEntryId()==potentialAncestor.getEntryId()){
+			return true;
+		}
+		if(potentialdescendant.isPrimitive()){
+			return false;
+		}
+		String parentName=potentialdescendant.getEntryClass().extends_name;
+		if(parentName!=null){ //else no-parent
+			return isA(typeTableMap.get(parentName),potentialAncestor);
+		}
+		return false;
+		
 	}
 	
 	public void validateTypeMismatch(String expectedTypeName,Integer actualTypeId,int line)

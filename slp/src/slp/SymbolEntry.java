@@ -31,6 +31,6 @@ public  class SymbolEntry {
 	}
 
 	public enum ReferenceRole{
-		CLASS, FIELD, METHOD , LOCAL, ARGUMENT
+		/*CLASS,*/ FIELD, METHOD , LOCAL, ARGUMENT
 	}
 }

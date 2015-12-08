@@ -6,8 +6,6 @@ import java.io.IOException;
  */
 public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 	
-	
-
 	private static final String MAIN_METHOD="main";
 	
 	protected ASTNode root;

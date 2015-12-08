@@ -19,7 +19,6 @@ public interface PropagatingVisitor<DownType,UpType> {
 	
 	//stmt
 	public UpType visit(StmtList stmts, DownType d);
-	public UpType visit(Stmt stmt, DownType d);
 	
 	public UpType visit(AssignStmt stmt, DownType d);
 	public UpType visit(CallStmt callStmt, DownType d);
@@ -35,7 +34,7 @@ public interface PropagatingVisitor<DownType,UpType> {
 	
 	//expr
 	public UpType visit(ExprList expressions, DownType d);
-	public UpType visit(Expr expr, DownType d);
+	
 	
 	public UpType visit(VarExpr expr, DownType d);
 	public UpType visit(ArrayVarExpr expr, DownType d);
