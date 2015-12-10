@@ -44,7 +44,7 @@ public class Environment {
 	
 	public void handleSemanticError(String error,int line)
 	{
-		System.out.println("ERROR in line +"+line+": "+error);
+		System.out.println("ERROR in line "+line+": "+error);
 		System.exit(1);
 		//throw new /*Semantic*/Exception("ERROR in line +"+line+": "+error);
 	}
@@ -69,27 +69,27 @@ public class Environment {
 		addTypeEntry(clss);
 	}
 	
-	public void addToEnv(DeclarationStmt dclr) throws /*Semantic*/Exception{
+	public void addToEnv(DeclarationStmt dclr) {
 		addToEnv(dclr.name,dclr.type.name,dclr.line,ReferenceRole.LOCAL);
 	}
 	
-	public void addToEnv(Field field) throws /*Semantic*/Exception{
+	public void addToEnv(Field field){
 		for(String id: field.extraIDs.ids){
 			addToEnv(field.name,id,field.line,ReferenceRole.FIELD);
 		}
 	}
 	
-	public void addToEnv(Method method) throws /*Semantic*/Exception{
+	public void addToEnv(Method method) {
 		addToEnv(method.name,method.type.name,method.line,ReferenceRole.METHOD);
 	}
 	
-	public void addToEnv(FormalsList formals) throws /*Semantic*/Exception{
+	public void addToEnv(FormalsList formals) {
 		for(Formals f:formals.formals){
 			addToEnv(f.name,f.type.name,f.line,ReferenceRole.ARGUMENT);
 		}		
 	}
 	
-	private void addToEnv(String typeName, String SymbolId, int lineDefined,ReferenceRole role) throws /*Semantic*/Exception{
+	private void addToEnv(String typeName, String SymbolId, int lineDefined,ReferenceRole role) {
 		TypeEntry type=getTypeEntry(typeName);
 		if(type==null){
 			handleSemanticError("type \""+typeName+"\" is undefined",lineDefined);
@@ -184,5 +184,29 @@ public class Environment {
 		symbolTable.popScope();
 	}
 	
+	public Method getMethod(Class clss, String methodName){
+		for (Method m : clss.dclrList.methods){
+			if (methodName.equals(m.name)){
+				return m;
+			}
+		}
+		
+		Class extendsClass = clss.extends_class;
+		if (extendsClass == null)
+			return null;
+		return getMethod(extendsClass, methodName);
+	}
 	
+	public Field getField(Class clss, String fieldName){
+		for (Field f : clss.dclrList.fields){
+			if (fieldName.equals(f.name)){
+				return f;
+			}
+		}
+		
+		Class extendsClass = clss.extends_class;
+		if (extendsClass == null)
+			return null;
+		return getField(extendsClass, fieldName);
+	}
 }

@@ -1,6 +1,9 @@
 package slp;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /** Evaluates straight line programs.
  */
@@ -11,7 +14,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 	private static final String MAIN_METHOD="main";
 	
 	protected ASTNode root;
-
+	
 	/** Constructs an SLP interpreter for the given AST.
 	 * 
 	 * @param root An SLP AST node.
@@ -68,11 +71,19 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 	}
 
 	public Integer visit(UnaryOpExpr expr, Environment env) {
-		Operator op = expr.op;
-		if (op != Operator.MINUS)
-			throw new RuntimeException("Encountered unexpected operator " + op);
 		Integer value = expr.operand.accept(this, env);
-		return new Integer(- value.intValue());
+		int result = 0;
+		switch (expr.op) {
+			case MINUS:
+				result = new Integer(- value.intValue());
+				break;
+			case LNEG:
+				result = 1 - result;
+				break;
+			default:
+				env.handleSemanticError("Encountered unexpected operator " + expr.op, expr.line);
+		}
+		return result;
 	}
 
 	public Integer visit(BinaryOpExpr expr, Environment env) {
@@ -80,11 +91,11 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		int lhsInt = lhsValue.intValue();
 		Integer rhsValue = expr.rhs.accept(this, env);
 		int rhsInt = rhsValue.intValue();
-		int result;
+		int result = 0;
 		switch (expr.op) {
 		case DIVIDE:
 			if (rhsInt == 0)
-				throw new RuntimeException("Attempt to divide by zero: " + expr);
+				env.handleSemanticError("Attempt to divide by zero: " + expr, expr.line);
 			result = lhsInt / rhsInt;
 			break;
 		case MINUS:
@@ -115,7 +126,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 			result = (lhsInt!=0 || rhsInt!=0) ? 1 : 0;
 			break;
 		default:
-			throw new RuntimeException("Encountered unexpected operator type: " + expr.op);
+			env.handleSemanticError("Encountered unexpected operator type: " + expr.op, expr.line);
 		}
 		return new Integer(result);
 	}
@@ -172,10 +183,31 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		return null;
 	}
 
-	public Integer visit(Class clss, Environment env) {
+	public Integer visit(Class clss, Environment env)  {
 		env.setCurrentClass(clss);
+		env.enterScope();
+		
+		//check duplicate methods
+		Set<String> tempSet = new HashSet<>();
+		for (Method method : clss.dclrList.methods){
+			if (!tempSet.add(method.name)) // set.add returns false if already exists
+				env.handleSemanticError("Duplicate method " + method.name + " in type " + clss.name,clss.line);
+			
+		}
+		
+		//check duplicate fields and add to environment
+		tempSet = new HashSet<>();
+		for (Field field : clss.dclrList.fields){
+			if (!tempSet.add(field.name)) // set.add returns false if already exists
+				env.handleSemanticError("Duplicate field " + clss.name + "." + field.name,clss.line);
+			
+			env.addToEnv(field);
+		}
+		
 		clss.dclrList.accept(this, env);
+		env.leaveScope();
 		env.setCurrentClass(null);
+		
 		return null;
 	}
 
@@ -186,6 +218,10 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		for (Method method : list.methods) {
 			method.accept(this, env);
 		}
+		for (Dclr decleration : list.declarations) {
+			decleration.accept(this, env);
+		}
+
 		return null;
 	}
 	
@@ -244,8 +280,8 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		return null;
 	}
 
-	public Integer visit(CallStmt callStmt, Environment d) {
-		// TODO Auto-generated method stub
+	public Integer visit(CallStmt callStmt, Environment env) {
+		callStmt.call.accept(this, env);
 		return null;
 	}
 
@@ -289,16 +325,68 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		return null;
 	}
 
-	public Integer visit(VirtualCall virtualCall, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
+	public Integer visit(VirtualCall virtualCall, Environment env) {
+		int exprTypeId = virtualCall.expr.accept(this, env);
+		TypeEntry exprType = env.getTypeEntry(exprTypeId);
+		
+		if (exprType.isPrimitive())
+			env.handleSemanticError("Cannot invoke " + virtualCall.name + " on primitive type " + exprType.getEntryName(), virtualCall.line);
+
+		Method m = env.getMethod(exprType.getEntryClass(), virtualCall.name);
+		if (m == null)
+			env.handleSemanticError("The method " + virtualCall.name + " is undefined for the type " + exprType.getEntryName(), virtualCall.line);
+
+		if (m.isStatic)
+			env.handleSemanticError("Cannot invoke static method " + virtualCall.name + " on an instance", virtualCall.line);
+
+		boolean isCallValid = verifyMethodCall(m.formalsList.formals, virtualCall.callArgs.expressions, env);
+		if (!isCallValid)
+			env.handleSemanticError("The method " + virtualCall.name + " is undefined for the argumetns " + virtualCall.callArgs.expressions.toString(), virtualCall.line);
+
+		String returnTypeName = m.type.name;
+		return env.getTypeEntry(returnTypeName).getEntryId();
+		
 	}
 
-	public Integer visit(StaticCall staticCall, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
+	public Integer visit(StaticCall staticCall, Environment env) {
+		String exprTypeName = staticCall.className;
+		TypeEntry exprType = env.getTypeEntry(exprTypeName);
+		
+		if (exprType.isPrimitive())
+			env.handleSemanticError("Cannot invoke " + staticCall.name + " on primitive type " + exprType.getEntryName(), staticCall.line);
+
+		Method m = env.getMethod(exprType.getEntryClass(), staticCall.name);
+		if (m == null)
+			env.handleSemanticError("The method " + staticCall.name + " is undefined for the type " + exprType.getEntryName(), staticCall.line);
+
+		if (!m.isStatic)
+			env.handleSemanticError("Cannot invoke virtual method " + staticCall.name + " on class", staticCall.line);
+
+		boolean isCallValid = verifyMethodCall(m.formalsList.formals, staticCall.callArgs.expressions, env);
+		if (!isCallValid)
+			env.handleSemanticError("The method " + staticCall.name + " is undefined for the argumetns " + staticCall.callArgs.expressions.toString(), staticCall.line);
+
+		String returnTypeName = m.type.name;
+		return env.getTypeEntry(returnTypeName).getEntryId();
 	}
 
+	public boolean verifyMethodCall(List<Formals> formals, List<Expr> callArgs, Environment env){
+		if (formals.size() != callArgs.size())
+			return false;
+		
+		for (int i = 0; i < formals.size(); i++){
+			int exprTypeId = callArgs.get(i).accept(this, env);
+			TypeEntry exprType = env.getTypeEntry(exprTypeId);
+			
+			String formalTypeName = formals.get(0).type.name;
+			TypeEntry formalType = env.getTypeEntry(formalTypeName);
+			
+			if (!exprType.equals(formalType))
+				return false;
+		}
+		
+		return true;
+	}
 	public Integer visit(ExprList expressions, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
