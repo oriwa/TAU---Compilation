@@ -26,4 +26,6 @@ public enum Operator {
 		default: throw new RuntimeException("Unexpted value: " + this.name());
 		}
 	}
+	
+	
 }

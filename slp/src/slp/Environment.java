@@ -34,6 +34,7 @@ public class Environment {
 	
 	private Class currentClass;
 	private Method currentMethod;
+	private boolean blockContainsReturn;
 	private int loopDepth;
 	private int mainMethodNumber=0;
 	
@@ -55,6 +56,11 @@ public class Environment {
 		if(actualType.getEntryId()!=expectedType.getEntryId())
 			handleSemanticError("type mismatch: cannot convert from "+actualType.getEntryName()+" to "+expectedType.getEntryName(),line);
 			
+	}
+	
+	public void validateTypeMismatch(String expectedTypeName,TypeEntry actualType,int line)
+	{
+		validateTypeMismatch(getTypeEntry(expectedTypeName),actualType, line);
 	}
 	
 	public void validateTypeMismatch(String expectedTypeName,Integer actualTypeId,int line)
@@ -208,5 +214,13 @@ public class Environment {
 		if (extendsClass == null)
 			return null;
 		return getField(extendsClass, fieldName);
+	}
+
+	public boolean isBlockContainsReturn() {
+		return blockContainsReturn;
+	}
+
+	public void setBlockContainsReturn(boolean blockContainsReturn) {
+		this.blockContainsReturn = blockContainsReturn;
 	}
 }
