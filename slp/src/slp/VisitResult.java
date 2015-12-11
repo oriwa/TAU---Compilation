@@ -2,6 +2,7 @@ package slp;
 
 public class VisitResult {
 	
+	
 	public TypeEntry type;
 	public int arrayDimension=0;
 	public Object value;
