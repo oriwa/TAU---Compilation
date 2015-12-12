@@ -245,15 +245,11 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		return null;
 	}
 
-<<<<<<< HEAD
-	public VisitResult visit(Method method, Environment env) {		
-=======
 	public VisitResult visit(Method method, Environment env) {
 		TypeEntry currentClassType= env.getCurrentClassType();
 		
 		env.setSymbolTable(currentClassType.getScope(method.isStatic));
 		
->>>>>>> refs/heads/master-v2
 		if(IsMainMethod(method))
 			env.addMainMethodNumber();
 		
