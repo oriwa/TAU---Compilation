@@ -284,8 +284,8 @@ public class Environment {
 	public void addDclrs(Class clss) {
 	
 		TypeEntry clssType=getTypeEntry(clss.name);
-		//SymbolTable staticScope = clssType.getScope(TypeEntry.STATIC_SCOPE);
-		//SymbolTable instanceScope = clssType.getScope(TypeEntry.INSTANCE_SCOPE);
+		
+		SymbolTable instanceScope = clssType.getScope(TypeEntry.INSTANCE_SCOPE);
 		
 		
 		
@@ -296,8 +296,11 @@ public class Environment {
 				if(alreadySeen.contains(method.name)){
 					handleSemanticError("Duplicate definition " + method.name + " in type " + clss.name,clss.line);	
 				}
-				
 				alreadySeen.add(method.name);
+				SymbolEntry parentSymbol=instanceScope.getEntryByName(method.name);
+				if(parentSymbol!=null && parentSymbol instanceof MethodSymbolEntry){
+					handleSemanticError("Duplicate definition " + method.name + " in type " + clss.name,clss.line);
+				}
 				
 				TypeEntry methodType = this.getTypeEntry(method.type.name);
 				if(methodType==null){
@@ -325,19 +328,10 @@ public class Environment {
 				}
 				Validator.validateLibraryInstantiation(fieldType,this,field.line);
 				
-				if(alreadySeen.contains(field.name)||clssType.isNameTaken(field.name)){
-					handleSemanticError("Duplicate definition " + field.name + " in type " + clss.name,clss.line);	
-				}
-				alreadySeen.add(field.name);
-				SymbolEntry fieldSymbol =new SymbolEntry(field.name, clssType, field.line);
+				addField(field.name, alreadySeen, instanceScope, fieldType, field.line);
 				
-				clssType.addToScopes(fieldSymbol, false);
 				for(String id : field.extraIDs.ids){
-					if(alreadySeen.contains(id)||clssType.isNameTaken(id)){
-						handleSemanticError("Duplicate definition " + id + " in type " + clss.name,clss.line);	
-					}
-					alreadySeen.add(id);
-					fieldSymbol =new SymbolEntry(id, clssType, field.line);
+					addField(id, alreadySeen, instanceScope, fieldType, field.line);
 				}
 				
 			}
@@ -345,4 +339,20 @@ public class Environment {
 		}
 
 	}
+	private void addField(String name,Set<String> alreadySeen,SymbolTable instanceScope,TypeEntry type, int line){
+
+		if(alreadySeen.contains(name)||type.isNameTaken(name)){
+			handleSemanticError("Duplicate definition " + name + " in type " + type.getEntryName(),line);	
+		}
+		alreadySeen.add(name);
+		SymbolEntry parentSymbol=instanceScope.getEntryByName(name);
+		if(parentSymbol!=null && parentSymbol instanceof MethodSymbolEntry){
+			handleSemanticError("Duplicate definition " + name + " in type " + type.getEntryName(),line);
+		}
+		
+		SymbolEntry fieldSymbol =new SymbolEntry(name, type, line);
+		
+		type.addToScopes(fieldSymbol, false);
+	}
 }
+
