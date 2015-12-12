@@ -6,6 +6,10 @@ public class VisitResult {
 	public TypeEntry type;
 	public Object value;
 	public boolean hasReturnStatement;
+	public String uninitializedId;
+	public boolean isInitialized;
+	public Scope prevScope;
+	
 	
 	public VisitResult()
 	{
