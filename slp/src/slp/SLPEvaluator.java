@@ -188,29 +188,11 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	private void initTypeTable(ClassList classList, Environment env)  {
 		initLibrary(env);
 		for (Class clss : classList.classes) {
-			if(clss.extends_name!=null)
-			{
-				TypeEntry extendsTypeEntry= env.getTypeEntry(clss.extends_name);
-				if(extendsTypeEntry!=null)
-				{
-					Class extendsClass=extendsTypeEntry.getEntryClass();
-					if(!extendsClass.isSealed)
-						clss.extends_class=extendsClass;
-					env.handleSemanticError("can not extend form class" + clss.extends_name,clss.line);
-				}
-				else
-				{					
-					env.handleSemanticError("class \""+clss.extends_class.name +"\" is undefined, classes can only extend previously defined classes",clss.line);
-				}
-			}
-			TypeEntry previousDef=env.getTypeEntry(clss.name);
-			if(previousDef!=null){
-				String errorMsg="ERROR: multiple definitions of class \""+clss.name+"\"";
-				String note="note: first defined in line: "+previousDef.getEntryClass().line;
-				env.handleSemanticError(errorMsg+"\n"+note,clss.line);
-			}
 			env.addTypeEntry(clss);
-		}		
+		}
+		for(Class clss:classList.classes){
+			env.addDclrs(clss);
+		}
 	}
 	
 
@@ -229,25 +211,9 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	public VisitResult visit(Class clss, Environment env)  {
 		env.setCurrentClass(clss);
 		env.enterScope();
-		
-		//check duplicate methods
-		Set<String> tempSet = new HashSet<String>();
-		for (Method method : clss.dclrList.methods){
-			if (!tempSet.add(method.name)) // set.add returns false if already exists
-				env.handleSemanticError("Duplicate method " + method.name + " in type " + clss.name,clss.line);
 			
-		}
-		
-		//check duplicate fields and add to environment
-		tempSet = new HashSet<String>();
-		for (Field field : clss.dclrList.fields){
-			if (!tempSet.add(field.name)) // set.add returns false if already exists
-				env.handleSemanticError("Duplicate field " + clss.name + "." + field.name,clss.line);
-			
-			env.addToEnv(field);
-		}
-		
 		clss.dclrList.accept(this, env);
+		
 		env.leaveScope();
 		env.setCurrentClass(null);
 		
@@ -358,7 +324,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	
 
 	public VisitResult visit(IfStmt ifStmt, Environment env) {
-		
 		VisitResult exprResult= ifStmt.expr.accept(this,env);
 		env.validateTypeMismatch(Environment.BOOLEAN,exprResult.type,ifStmt.line);
 		
@@ -385,7 +350,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			setInitializedEntriesInBothScopes(ifScope,elseScope,env);
 
 		}
-		
 		return new VisitResult(hasReturn);
 	}
 
@@ -400,7 +364,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 	public VisitResult visit(WhileStmt whileStmt, Environment env) {
 		VisitResult whileExprResult =whileStmt.expr.accept(this,env);
-		
 		env.validateTypeMismatch(Environment.BOOLEAN,whileExprResult.type,whileStmt.line);
 		boolean isWhileTrue=false;
 		if(whileExprResult.value!=null)
@@ -416,12 +379,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		Scope preScope=whileStmtResult.prevScope;
 		boolean hasReturn=isWhileTrue&&whileStmtResult.hasReturnStatement;
 		env.setIsInLoop(false);
-		if (createScope)
-			preScope=env.leaveScope();		
-		
-		if(isWhileTrue)
-			setInitializedToOldEntries(preScope, env);
-							
 		return new VisitResult(hasReturn);
 	}
 
