@@ -113,22 +113,6 @@ public class Environment {
 		return addToEnv(dclr.name, dclr.type.name, dclr.line, false);
 	}
 
-	public void addToEnv(Field field)  {
-		
-		SymbolEntry symbolEntry =addToEnv(field.type.name, field.name, field.line, false);
-		symbolEntry.setIsInitialized(true);
-		for (String id : field.extraIDs.ids) {
-			symbolEntry =addToEnv(field.type.name, id, field.line, false);
-			symbolEntry.setIsInitialized(true);
-		}
-	}
-
-	public void addToEnv(Method method) {
-		SymbolEntry methodSymbolEntry=addToEnv(method.name, method.type.name, method.line,true);
-		this.setCurrentMethodType((MethodSymbolEntry) methodSymbolEntry);
-		getCurrentClassType().addComponent(method.name, getTypeEntry(method.type.name));
-	}
-
 	public void addToEnv(FormalsList formals) {
 		for (Formals f : formals.formals) {
 			SymbolEntry symbolEntry =addToEnv(f.name, f.type.name, f.line, true);
@@ -177,7 +161,34 @@ public class Environment {
 	}
 
 	public TypeEntry addTypeEntry(Class clss) {
+		
+		TypeEntry previousDef=getTypeEntry(clss.name);
+		if(previousDef!=null){
+			String errorMsg="ERROR: multiple definitions of class \""+clss.name+"\"";
+			String note="note: first defined in line: "+previousDef.getEntryClass().line;
+			handleSemanticError(errorMsg+"\n"+note,clss.line);
+		}
+		
 		TypeEntry typeEntry = new TypeEntry(typeTable.size(), clss.name, clss);
+		if(clss.extends_name!=null){
+			TypeEntry extendsTypeEntry= getTypeEntry(clss.extends_name);
+			if(extendsTypeEntry!=null)
+			{
+				Class extendsClass=extendsTypeEntry.getEntryClass();
+				if(!extendsClass.isSealed){
+					typeEntry.expandScope(extendsTypeEntry);
+				}
+				else{
+					handleSemanticError("can not extend form class" + clss.extends_name,clss.line);	
+				}
+				
+			}
+			else
+			{					
+				handleSemanticError("class \""+clss.extends_class.name +"\" is undefined, classes can only extend previously defined classes",clss.line);
+			}
+		}
+		
 		addTypeEntry(typeEntry);
 		return typeEntry;
 	}
@@ -243,7 +254,6 @@ public class Environment {
 		
 		symbolTable.setEntryInitialized(refName);
 	}
-	
 
 	public TypeEntry getExprType(TypeEntry exprType, String fieldName) {
 		
@@ -270,4 +280,63 @@ public class Environment {
 		this.currentMethodType = currentMethodType;
 	}
 
+	public void addDclrs(Class clss) {
+	
+		TypeEntry clssType=getTypeEntry(clss.name);
+		//SymbolTable staticScope = clssType.getScope(TypeEntry.STATIC_SCOPE);
+		//SymbolTable instanceScope = clssType.getScope(TypeEntry.INSTANCE_SCOPE);
+		
+		
+		
+		Set<String> alreadySeen= new HashSet<String>();
+		for (Dclr dclr : clss.dclrList.declarations){
+			if(dclr.getClass()==Method.class){
+				Method method=(Method)dclr;
+				if(alreadySeen.contains(method.name)){
+					handleSemanticError("Duplicate definition " + method.name + " in type " + clss.name,clss.line);	
+				}
+				
+				alreadySeen.add(method.name);
+				
+				TypeEntry methodType = this.getTypeEntry(method.type.name);
+				if(methodType==null){
+					handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);				
+				}
+				
+				MethodSymbolEntry methodSymbol =new MethodSymbolEntry(method.name, methodType, method.line);
+				TypeEntry tmpArgType;
+				for(Formals formal:method.formalsList.formals){
+					tmpArgType=this.getTypeEntry(formal.type.name);
+					if(tmpArgType==null){
+						handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);
+					}
+					methodSymbol.addToArgs(tmpArgType);
+				}
+				clssType.addToScopes(methodSymbol, method.isStatic);
+			}else{//dclr is Field
+				Field field=(Field)dclr;
+				TypeEntry fieldType = this.getTypeEntry(field.type.name);
+				if(fieldType==null){
+					handleSemanticError("type \"" + field.type.name + "\" is undefined", field.line);				
+				}
+				if(alreadySeen.contains(field.name)||clssType.isNameTaken(field.name)){
+					handleSemanticError("Duplicate definition " + field.name + " in type " + clss.name,clss.line);	
+				}
+				alreadySeen.add(field.name);
+				SymbolEntry fieldSymbol =new SymbolEntry(field.name, clssType, field.line);
+				
+				clssType.addToScopes(fieldSymbol, false);
+				for(String id : field.extraIDs.ids){
+					if(alreadySeen.contains(id)||clssType.isNameTaken(id)){
+						handleSemanticError("Duplicate definition " + id + " in type " + clss.name,clss.line);	
+					}
+					alreadySeen.add(id);
+					fieldSymbol =new SymbolEntry(id, clssType, field.line);
+				}
+				
+			}
+					
+		}
+
+	}
 }
