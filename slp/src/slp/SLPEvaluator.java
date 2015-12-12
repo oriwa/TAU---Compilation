@@ -287,6 +287,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 	public VisitResult visit(Formals formals, Environment env) {
 		formals.type.accept(this, env);
+		
 		env.addToEnv(formals);
 		return null;
 	}

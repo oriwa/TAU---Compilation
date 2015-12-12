@@ -124,12 +124,11 @@ public class Environment {
 		return newSymbol;
 	}
 
-	public void addToEnv(FormalsList formals) {
-		for (Formals f : formals.formals) {
-			
-			SymbolEntry symbolEntry =addDeclaration(Validator.validateType( f.type, this),f.name, f.line);
+	public void addToEnv(Formals formals) {
+	
+			SymbolEntry symbolEntry =addDeclaration(Validator.validateType( formals.type, this),formals.name, formals.line);
 			symbolEntry.setIsInitialized(true);
-		}
+		
 	}
  
 //	public void addToEnv(FormalsList formals) {
