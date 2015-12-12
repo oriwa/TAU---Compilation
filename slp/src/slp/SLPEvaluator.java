@@ -34,7 +34,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	
 	
 	public VisitResult visit(StmtList stmts, Environment env) {
-		
 		env.enterScope();
 		boolean hasReturnStatement=false;
 		for (Stmt st : stmts.statements) {
@@ -55,13 +54,10 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 
 	public VisitResult visit(AssignStmt stmt, Environment env) {
-		
-		
-		
 
 		VisitResult locationResult=stmt.location.accept(this, env);
 		VisitResult rhsResult=stmt.rhs.accept(this, env);
-		Validator.validateTypeMismatch(locationResult.type, rhsResult.type, stmt.line, env);
+		env.validateTypeMismatch(locationResult.type, rhsResult.type, stmt.line);
 		if(locationResult.uninitializedId!=null)
 			env.setEntryInitialized(locationResult.uninitializedId);
 		
@@ -428,7 +424,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 							
 		return new VisitResult(hasReturn);
 	}
-	
 
 	private void setInitializedToOldEntries(Scope preScope, Environment env) {
 		
@@ -583,7 +578,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	}
 
 	public VisitResult visit(NullExpr expr, Environment env) { 
-		return new VisitResult();
+		return new VisitResult(env.getTypeEntry(Environment.NULL));
 	}
 
 	public VisitResult visit(InstantExpr expr, Environment env) {
