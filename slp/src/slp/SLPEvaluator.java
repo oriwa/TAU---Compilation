@@ -298,7 +298,9 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		if(typeEntry==null)
 		{
 			env.handleSemanticError(type.name +" cannot be resolved to a type", type.line);		
-		}
+		} 
+		if(type.array_dimension!=0)
+			typeEntry=ArrayTypeEntry.makeArrayTypeEntry(typeEntry,type.array_dimension);
 		return new VisitResult(typeEntry);
 	}
 
