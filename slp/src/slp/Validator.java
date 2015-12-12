@@ -80,4 +80,11 @@ public class Validator {
 		/*TODO better handling error for debugging*/	
 	}
 	
+	public static void validateInitialized(VisitResult visitResult,int line,Environment env)
+	{
+		if(!visitResult.isInitialized)
+			env.handleSemanticError("The local variable " +visitResult.uninitializedId+" may not have been initialized", line);
+		
+	}
+	
 }
