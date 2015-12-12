@@ -302,6 +302,7 @@ public class Environment {
 				if(methodType==null){
 					handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);				
 				}
+				Validator.validateLibraryInstantiation(methodType,this,method.line);
 				
 				MethodSymbolEntry methodSymbol =new MethodSymbolEntry(method.name, methodType, method.line);
 				TypeEntry tmpArgType;
@@ -310,6 +311,8 @@ public class Environment {
 					if(tmpArgType==null){
 						handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);
 					}
+					Validator.validateLibraryInstantiation(methodType,this,method.line);
+					
 					methodSymbol.addToArgs(tmpArgType);
 				}
 				clssType.addToScopes(methodSymbol, method.isStatic);
@@ -319,6 +322,8 @@ public class Environment {
 				if(fieldType==null){
 					handleSemanticError("type \"" + field.type.name + "\" is undefined", field.line);				
 				}
+				Validator.validateLibraryInstantiation(fieldType,this,field.line);
+				
 				if(alreadySeen.contains(field.name)||clssType.isNameTaken(field.name)){
 					handleSemanticError("Duplicate definition " + field.name + " in type " + clss.name,clss.line);	
 				}

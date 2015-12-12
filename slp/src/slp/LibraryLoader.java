@@ -1,15 +1,12 @@
 package slp;
 
 public class LibraryLoader {
-	
-	
-
 	public static final String NAME="Library";
 	
-	
-	
 	public void load(Environment env){
-		
+		Class libraryClss=GetLibraryClass();
+		env.addTypeEntry(libraryClss);
+		env.addDclrs(libraryClss);
 	}
 	
 	
@@ -42,7 +39,7 @@ public class LibraryLoader {
 		methods.addMethod(GetRandomMethod());
 		methods.addMethod(GetTimeMethod());
 		methods.addMethod(GetExitMethod());
-		//checking push
+		
 		return methods;
 	}
 	
