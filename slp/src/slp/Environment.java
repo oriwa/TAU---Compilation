@@ -174,6 +174,7 @@ public class Environment {
 			TypeEntry extendsTypeEntry= getTypeEntry(clss.extends_name);
 			if(extendsTypeEntry!=null)
 			{
+				Validator.validateLibraryInstantiation(typeEntry, this, clss.line);
 				Class extendsClass=extendsTypeEntry.getEntryClass();
 				if(!extendsClass.isSealed){
 					typeEntry.expandScope(extendsTypeEntry);
@@ -283,8 +284,8 @@ public class Environment {
 	public void addDclrs(Class clss) {
 	
 		TypeEntry clssType=getTypeEntry(clss.name);
-		//SymbolTable staticScope = clssType.getScope(TypeEntry.STATIC_SCOPE);
-		//SymbolTable instanceScope = clssType.getScope(TypeEntry.INSTANCE_SCOPE);
+		
+		SymbolTable instanceScope = clssType.getScope(TypeEntry.INSTANCE_SCOPE);
 		
 		
 		
@@ -295,13 +296,17 @@ public class Environment {
 				if(alreadySeen.contains(method.name)){
 					handleSemanticError("Duplicate definition " + method.name + " in type " + clss.name,clss.line);	
 				}
-				
 				alreadySeen.add(method.name);
+				SymbolEntry parentSymbol=instanceScope.getEntryByName(method.name);
+				if(parentSymbol!=null && parentSymbol instanceof MethodSymbolEntry){
+					handleSemanticError("Duplicate definition " + method.name + " in type " + clss.name,clss.line);
+				}
 				
 				TypeEntry methodType = this.getTypeEntry(method.type.name);
 				if(methodType==null){
 					handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);				
 				}
+				Validator.validateLibraryInstantiation(methodType,this,method.line);
 				
 				MethodSymbolEntry methodSymbol =new MethodSymbolEntry(method.name, methodType, method.line);
 				TypeEntry tmpArgType;
@@ -310,6 +315,8 @@ public class Environment {
 					if(tmpArgType==null){
 						handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);
 					}
+					Validator.validateLibraryInstantiation(methodType,this,method.line);
+					
 					methodSymbol.addToArgs(tmpArgType);
 				}
 				clssType.addToScopes(methodSymbol, method.isStatic);
@@ -319,19 +326,12 @@ public class Environment {
 				if(fieldType==null){
 					handleSemanticError("type \"" + field.type.name + "\" is undefined", field.line);				
 				}
-				if(alreadySeen.contains(field.name)||clssType.isNameTaken(field.name)){
-					handleSemanticError("Duplicate definition " + field.name + " in type " + clss.name,clss.line);	
-				}
-				alreadySeen.add(field.name);
-				SymbolEntry fieldSymbol =new SymbolEntry(field.name, clssType, field.line);
+				Validator.validateLibraryInstantiation(fieldType,this,field.line);
 				
-				clssType.addToScopes(fieldSymbol, false);
+				addField(field.name, alreadySeen, instanceScope, fieldType, field.line);
+				
 				for(String id : field.extraIDs.ids){
-					if(alreadySeen.contains(id)||clssType.isNameTaken(id)){
-						handleSemanticError("Duplicate definition " + id + " in type " + clss.name,clss.line);	
-					}
-					alreadySeen.add(id);
-					fieldSymbol =new SymbolEntry(id, clssType, field.line);
+					addField(id, alreadySeen, instanceScope, fieldType, field.line);
 				}
 				
 			}
@@ -339,4 +339,20 @@ public class Environment {
 		}
 
 	}
+	private void addField(String name,Set<String> alreadySeen,SymbolTable instanceScope,TypeEntry type, int line){
+
+		if(alreadySeen.contains(name)||type.isNameTaken(name)){
+			handleSemanticError("Duplicate definition " + name + " in type " + type.getEntryName(),line);	
+		}
+		alreadySeen.add(name);
+		SymbolEntry parentSymbol=instanceScope.getEntryByName(name);
+		if(parentSymbol!=null && parentSymbol instanceof MethodSymbolEntry){
+			handleSemanticError("Duplicate definition " + name + " in type " + type.getEntryName(),line);
+		}
+		
+		SymbolEntry fieldSymbol =new SymbolEntry(name, type, line);
+		
+		type.addToScopes(fieldSymbol, false);
+	}
 }
+
