@@ -520,8 +520,8 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		return new VisitResult(env.getTypeEntry(Environment.BOOLEAN),expr.value);
 	}
 
-	public VisitResult visit(NullExpr expr, Environment d) { 
-		return new VisitResult();
+	public VisitResult visit(NullExpr expr, Environment env) { 
+		return new VisitResult(env.getTypeEntry(Environment.NULL));
 	}
 
 

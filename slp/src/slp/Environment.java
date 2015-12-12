@@ -10,7 +10,8 @@ public class Environment {
 	public static final String INT="int";
 	public static final String BOOLEAN="boolean";
 	public static final String STRING="string";
-
+	public static final String NULL="null";
+	
 	private static final String[] PRIMITIVE_TYPES={INT,BOOLEAN,STRING};
 	
 	
@@ -41,6 +42,9 @@ public class Environment {
 	
 	public Environment(){
 		initPrimitiveTypeEntrys();
+		TypeEntry nullEntry = new TypeEntry(typeTable.size(), NULL);
+		nullEntry.setPrimitive(false);
+		addTypeEntry(nullEntry);
 	}
 	
 	public void handleSemanticError(String error,int line)
@@ -51,10 +55,26 @@ public class Environment {
 	
 	public void validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType,int line)
 	{
-		//TODO: Add inheritance support
-		if(!isDimensionEqual(expectedType,actualType) || !isA(expectedType,actualType))
+		if(!validateTypeMismatch(expectedType,actualType))
 			handleSemanticError("type mismatch: cannot convert from "+actualType.getEntryName()+" to "+expectedType.getEntryName(),line);
-			
+	}
+	
+	private boolean validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType){
+		int expectedDimension = expectedType.getTypeDimension();
+		int actualDimension = actualType.getTypeDimension();
+		
+		if (expectedDimension != actualDimension)
+			return false;
+		
+		boolean isArray = expectedDimension != 0;
+		if (isArray && expectedType.getEntryId() != actualType.getEntryId())
+			return false;
+		
+		if (!isA(expectedType, actualType))
+			return false;
+		
+		return true;
+
 	}
 	
 	public void validateTypeMismatch(String expectedTypeName,TypeEntry actualType,int line)
@@ -66,25 +86,6 @@ public class Environment {
 	{
 		validateTypeMismatch(getTypeEntry(expectedTypeName),getTypeEntry(actualTypeId), line);
 	}
-	
-	
-	private boolean isDimensionEqual(TypeEntry type1, TypeEntry type2) {
-		if(type1.getClass()==type2.getClass()){
-			if(type1.getClass()==ArrayTypeEntry.class){
-				ArrayTypeEntry arr1 =(ArrayTypeEntry)type1;
-				ArrayTypeEntry arr2 =(ArrayTypeEntry)type2;
-				return arr1.getTypeDimension()==arr2.getTypeDimension();
-			}
-		}
-		ArrayTypeEntry arr;
-		if(type1.getClass()==ArrayTypeEntry.class){
-			arr =(ArrayTypeEntry)type1;
-			
-		}else{
-			arr = (ArrayTypeEntry)type2;
-		}
-		return arr.getTypeDimension()==0;
-	}
 
 	public boolean isA(TypeEntry potentialAncestor,
 			TypeEntry potentialdescendant) {
@@ -93,6 +94,9 @@ public class Environment {
 		}
 		if (potentialdescendant.isPrimitive()) {
 			return false;
+		}
+		if (potentialAncestor.getEntryName() == NULL){
+			return true;
 		}
 		String parentName = potentialdescendant.getEntryClass().extends_name;
 		if (parentName != null) { // else no-parent
@@ -130,7 +134,7 @@ public class Environment {
 	private SymbolEntry addToEnv(String typeName, String SymbolId, int lineDefined,boolean isMethod)  {
 		TypeEntry type = getTypeEntry(typeName);
 		if (type == null) {
-			Validator.handleSemanticError("type \"" + typeName + "\" is undefined",
+			handleSemanticError("type \"" + typeName + "\" is undefined",
 					lineDefined);
 		}
 
@@ -138,7 +142,7 @@ public class Environment {
 			String errorMsg = "ERROR: multiple definitions of " + SymbolId;
 			String note = "note: first defined in line: "
 					+ symbolTable.getEntryByName(SymbolId).definedAt();
-			Validator.handleSemanticError(errorMsg + "\n" + note, lineDefined);
+			handleSemanticError(errorMsg + "\n" + note, lineDefined);
 		}
 		SymbolEntry newSymbol ;
 		if(isMethod){
