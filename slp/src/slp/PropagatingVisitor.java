@@ -37,7 +37,6 @@ public interface PropagatingVisitor<DownType,UpType> {
 	public UpType visit(ExprList expressions, DownType d);
 	public UpType visit(Expr expr, DownType d);
 	
-	public UpType visit(InstantExpr expr, DownType d);	
 	public UpType visit(VarExpr expr, DownType d);
 	public UpType visit(ArrayVarExpr expr, DownType d);
 	public UpType visit(ArrayLenExpr expr, DownType d);

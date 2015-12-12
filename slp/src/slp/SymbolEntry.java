@@ -4,8 +4,6 @@ public  class SymbolEntry {
 	private final String entryName;
 	private final int lineOfDefinition;
 	private final TypeEntry type;
-
-	private boolean isInitialized; 
 	//private final ReferenceRole role;
 	
 	public SymbolEntry(String entryName, TypeEntry typeId, int lineOfDefinition){
@@ -26,16 +24,6 @@ public  class SymbolEntry {
 	
 	public int definedAt() {
 		return lineOfDefinition;
-	}
-
-
-	public boolean getIsInitialized() {
-		return isInitialized;
-	}
-
-
-	public void setIsInitialized(boolean isInitialized) {
-		this.isInitialized = isInitialized;
 	}
 
 //	public ReferenceRole getRole() {
