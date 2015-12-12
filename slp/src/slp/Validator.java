@@ -1,7 +1,8 @@
 package slp;
 
+
 public class Validator {
-		
+	
 	public static void validateIlegalOp(TypeEntry lType, TypeEntry rType, Operator op, int line,Environment env) {
 		String errorV1="The operator " +op.toString() + " is undefined for types " +lType.getEntryName()+", "+rType.getEntryName();
 		String errorV2="incompatible operand types "+lType.getEntryName()+" and "+rType.getEntryName();
@@ -55,7 +56,6 @@ public class Validator {
 			env.handleSemanticError("oops! compiler error in parsing, parsed '!' as binary op", line);
 			/*TODO better handling error for debugging*/
 		}
-
 		
 	}
 
@@ -78,6 +78,13 @@ public class Validator {
 		
 		env.handleSemanticError("oops! compiler error in parsing, parsed "+op.toString()+" as unary op", line);
 		/*TODO better handling error for debugging*/	
+	}
+
+	public static void validateLibraryInstantiation(TypeEntry type, Environment env, int line) {
+		if(type.getEntryId()==env.getTypeEntry("Library").getEntryId()){
+			env.handleSemanticError("Cannot instantiate the type Library", line);
+		}
+		
 	}
 	
 	public static void validateInitialized(VisitResult visitResult,int line,Environment env)
