@@ -306,27 +306,17 @@ public class Environment {
 				
 				alreadySeen.add(method.name);
 				
-				TypeEntry methodType = this.getTypeEntry(method.type.name);
-				if(methodType==null){
-					handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);				
-				}
-				
+				TypeEntry methodType =  Validator.validateType(method.type, this); 
 				MethodSymbolEntry methodSymbol =new MethodSymbolEntry(method.name, methodType, method.line);
 				TypeEntry tmpArgType;
 				for(Formals formal:method.formalsList.formals){
-					tmpArgType=this.getTypeEntry(formal.type.name);
-					if(tmpArgType==null){
-						handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);
-					}
+					tmpArgType=  Validator.validateType(formal.type, this);
 					methodSymbol.addToArgs(tmpArgType);
 				}
 				clssType.addToScopes(methodSymbol, method.isStatic);
 			}else{//dclr is Field
 				Field field=(Field)dclr;
-				TypeEntry fieldType = this.getTypeEntry(field.type.name);
-				if(fieldType==null){
-					handleSemanticError("type \"" + field.type.name + "\" is undefined", field.line);				
-				}
+				TypeEntry fieldType = Validator.validateType(field.type, this);
 				if(alreadySeen.contains(field.name)||clssType.isNameTaken(field.name)){
 					handleSemanticError("Duplicate definition " + field.name + " in type " + clss.name,clss.line);	
 				}
@@ -339,7 +329,7 @@ public class Environment {
 						handleSemanticError("Duplicate definition " + id + " in type " + clss.name,clss.line);	
 					}
 					alreadySeen.add(id);
-					fieldSymbol =new SymbolEntry(id, clssType, field.line);
+					fieldSymbol =new SymbolEntry(id, fieldType, field.line);
 				}
 				
 			}
