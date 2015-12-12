@@ -232,11 +232,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		for (Method method : list.methods) {
 			method.accept(this, env);
 		}
-		
-//		for (Dclr decleration : list.declarations) {
-//			decleration.accept(this, env);
-//		}
-
 		return null;
 	}
 	
@@ -287,9 +282,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	}
 
 	public VisitResult visit(Formals formals, Environment env) {
-		TypeEntry formalType = env.getTypeEntry(formals.type.name);
-		if (formalType == null)
-			env.handleSemanticError(formals.type.name + " could not be resolved to a type", formals.line);
+		formals.type.accept(this, env);
 		env.addToEnv(formals);
 		return null;
 	}
@@ -487,7 +480,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			if(returnTypeDimensions != 0)
 				type = ArrayTypeEntry.makeArrayTypeEntry(type, returnTypeDimensions);
 		}
-		
 		return new VisitResult(type);
 	}
 
