@@ -34,13 +34,14 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	
 	
 	public VisitResult visit(StmtList stmts, Environment env) {
-		
+		env.enterScope();
 		boolean hasReturnStatement=false;
 		for (Stmt st : stmts.statements) {
 			VisitResult stmtResult=st.accept(this, env);
 			if(stmtResult.hasReturnStatement)
 				hasReturnStatement=true;
 		}
+		env.leaveScope();
 		return new VisitResult(hasReturnStatement);
 	}
 
@@ -333,28 +334,50 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	public VisitResult visit(IfStmt ifStmt, Environment env) {
 		VisitResult exprResult= ifStmt.expr.accept(this,env);
 		env.validateTypeMismatch(Environment.BOOLEAN,exprResult.type,ifStmt.line);
+		
+		boolean createScope = !(ifStmt.ifStmt instanceof StmtList);
+		if (createScope)
+			env.enterScope();		
 		VisitResult ifStmtResult= ifStmt.ifStmt.accept(this,env);
 		boolean hasReturn=ifStmtResult.hasReturnStatement;
+		if (createScope)
+			env.leaveScope();
+
 		if(ifStmt.elseStmt!=null)
 		{
+			createScope = !(ifStmt.elseStmt instanceof StmtList);
+			if (createScope)
+				env.enterScope();
 			VisitResult elseStmtResult=ifStmt.elseStmt.accept(this,env);
-			hasReturn=hasReturn&&elseStmtResult.hasReturnStatement;
+			hasReturn=hasReturn && elseStmtResult.hasReturnStatement;
+			if (createScope)
+				env.leaveScope();
+
 		}
+		
 		return new VisitResult(hasReturn);
 	}
 
 	public VisitResult visit(WhileStmt whileStmt, Environment env) {
 		VisitResult whileExprResult =whileStmt.expr.accept(this,env);
+		
 		env.validateTypeMismatch(Environment.BOOLEAN,whileExprResult.type,whileStmt.line);
 		boolean hasReturn=false;
 		if(whileExprResult.value!=null)
 		{
 			 hasReturn=((Boolean)whileExprResult.value).booleanValue();
 		}
+		
+		boolean createScope = !(whileStmt.stmt instanceof StmtList);
+		if (createScope)
+			env.enterScope();		
 		env.setIsInLoop(true);
 		VisitResult whileStmtResult=whileStmt.stmt.accept(this,env);
 		hasReturn=hasReturn&&whileStmtResult.hasReturnStatement;
 		env.setIsInLoop(false);
+		if (createScope)
+			env.leaveScope();		
+
 		return new VisitResult(hasReturn);
 	}
 
