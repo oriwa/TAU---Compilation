@@ -231,11 +231,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		for (Method method : list.methods) {
 			method.accept(this, env);
 		}
-		
-//		for (Dclr decleration : list.declarations) {
-//			decleration.accept(this, env);
-//		}
-
 		return null;
 	}
 	
@@ -283,13 +278,16 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		return false;
 	}
 
-	public VisitResult visit(FormalsList formalsList, Environment d) {
-		// TODO Auto-generated method stub
+	public VisitResult visit(FormalsList formalsList, Environment env) {
+		for (Formals f : formalsList.formals){
+			f.accept(this, env);
+		}
 		return null;
 	}
 
-	public VisitResult visit(Formals formals, Environment d) {
-		// TODO Auto-generated method stub
+	public VisitResult visit(Formals formals, Environment env) {
+		formals.type.accept(this, env);
+		env.addToEnv(formals);
 		return null;
 	}
 
@@ -432,26 +430,33 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	}
 
 	public VisitResult visit(VirtualCall virtualCall, Environment env) {
-		VisitResult exprResult= virtualCall.expr.accept(this, env);
-		TypeEntry exprType =exprResult.type;
+		TypeEntry exprType;
+		if (virtualCall.expr == null)
+			exprType = env.getCurrentClassType();
+		else {
+			VisitResult exprResult= virtualCall.expr.accept(this, env);
+			exprType =exprResult.type;
+		}
 		
 		if (exprType.isPrimitive())
 			env.handleSemanticError("Cannot invoke " + virtualCall.name + " on primitive type " + exprType.getEntryName(), virtualCall.line);
 
-		Method m = env.getMethod(exprType.getEntryClass(), virtualCall.name);
+		MethodSymbolEntry m = env.getMethodInClass(virtualCall.name, false, exprType);
 		if (m == null)
-			env.handleSemanticError("The method " + virtualCall.name + " is undefined for the type " + exprType.getEntryName(), virtualCall.line);
+			env.handleSemanticError("The virtual method " + virtualCall.name + " is undefined for the type " + exprType.getEntryName(), virtualCall.line);
 
-		if (m.isStatic)
-			env.handleSemanticError("Cannot invoke static method " + virtualCall.name + " on an instance", virtualCall.line);
-
-		boolean isCallValid = verifyMethodCall(m.formalsList.formals, virtualCall.callArgs.expressions, env);
+		boolean isCallValid = verifyMethodCall(m.getMethodArgs(), virtualCall.callArgs.expressions, env);
 		if (!isCallValid)
 			env.handleSemanticError("The method " + virtualCall.name + " is undefined for the argumetns " + virtualCall.callArgs.expressions.toString(), virtualCall.line);
 
-		TypeEntry type=env.getTypeEntry(m.type.name);
-		if(m.type.array_dimension!=0)
-			type=ArrayTypeEntry.makeArrayTypeEntry(type,m.type.array_dimension);
+		
+		TypeEntry type = m.getEntryTypeID();
+		if (type != null){	
+			int returnTypeDimensions = type.getTypeDimension();
+			if(returnTypeDimensions != 0)
+				type = ArrayTypeEntry.makeArrayTypeEntry(type, returnTypeDimensions);
+		}
+		
 		return new VisitResult(type);
 		
 	}
@@ -463,25 +468,24 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		if (exprType.isPrimitive())
 			env.handleSemanticError("Cannot invoke " + staticCall.name + " on primitive type " + exprType.getEntryName(), staticCall.line);
 
-		Method m = env.getMethod(exprType.getEntryClass(), staticCall.name);
+		MethodSymbolEntry m = env.getMethodInClass(staticCall.name, true, exprType);
 		if (m == null)
-			env.handleSemanticError("The method " + staticCall.name + " is undefined for the type " + exprType.getEntryName(), staticCall.line);
+			env.handleSemanticError("The static method " + staticCall.name + " is undefined for the type " + exprType.getEntryName(), staticCall.line);
 
-		if (!m.isStatic)
-			env.handleSemanticError("Cannot invoke virtual method " + staticCall.name + " on class", staticCall.line);
-
-		boolean isCallValid = verifyMethodCall(m.formalsList.formals, staticCall.callArgs.expressions, env);
+		boolean isCallValid = verifyMethodCall(m.getMethodArgs(), staticCall.callArgs.expressions, env);
 		if (!isCallValid)
 			env.handleSemanticError("The method " + staticCall.name + " is undefined for the argumetns " + staticCall.callArgs.expressions.toString(), staticCall.line);
 
-		
-		TypeEntry type=env.getTypeEntry(m.type.name);
-		if(m.type.array_dimension!=0)
-			type=ArrayTypeEntry.makeArrayTypeEntry(type,m.type.array_dimension);
+		TypeEntry type = m.getEntryTypeID();
+		if (type != null){	
+			int returnTypeDimensions = type.getTypeDimension();
+			if(returnTypeDimensions != 0)
+				type = ArrayTypeEntry.makeArrayTypeEntry(type, returnTypeDimensions);
+		}
 		return new VisitResult(type);
 	}
 
-	public boolean verifyMethodCall(List<Formals> formals, List<Expr> callArgs, Environment env){
+	private boolean verifyMethodCall(List<TypeEntry> formals, List<Expr> callArgs, Environment env){
 		if (formals.size() != callArgs.size())
 			return false;
 		
@@ -489,18 +493,17 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			VisitResult exprResult=  callArgs.get(i).accept(this, env);
 			TypeEntry exprType = exprResult.type;
 			
-			String formalTypeName = formals.get(0).type.name;
-			TypeEntry formalType = env.getTypeEntry(formalTypeName);
-			
-			if (!exprType.equals(formalType))
+			if (!exprType.equals(formals.get(i)))
 				return false;
 		}
 		
 		return true;
 	}
 	
-	public VisitResult visit(ExprList expressions, Environment d) {
-		// TODO Auto-generated method stub
+	public VisitResult visit(ExprList expressions, Environment env) {
+		for (Expr e : expressions.expressions){
+			e.accept(this, env);
+		}
 		return null;
 	}
 
