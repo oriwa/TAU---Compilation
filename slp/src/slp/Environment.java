@@ -2,6 +2,8 @@ package slp;
 
 import java.util.*;
 
+import java_cup.symbol;
+
 
 /** Represents a state during the evaluation of a program. 
  */
@@ -113,11 +115,9 @@ public class Environment {
 		return addToEnv(dclr.name, dclr.type.name, dclr.line, false);
 	}
 
-	public void addToEnv(FormalsList formals) {
-		for (Formals f : formals.formals) {
-			SymbolEntry symbolEntry =addToEnv(f.name, f.type.name, f.line, true);
-			symbolEntry.setIsInitialized(true);
-		}
+	public void addToEnv(Formals f) {
+		SymbolEntry symbolEntry =addToEnv(f.name, f.type.name, f.line, true);
+		symbolEntry.setIsInitialized(true);
 	}
 
 	private SymbolEntry addToEnv(String typeName, String SymbolId, int lineDefined,boolean isMethod)  {
@@ -270,6 +270,14 @@ public class Environment {
 
 	public void setCurrentClassType(TypeEntry currentClassType) {
 		this.currentClassType = currentClassType;
+	}
+
+	public MethodSymbolEntry getMethodInClass(String methodName,  boolean isStatic, TypeEntry classType){
+		SymbolTable symbolTable = classType.getScope(isStatic);
+		SymbolEntry symbolEntry = symbolTable.getEntryByName(methodName);
+		if (symbolEntry instanceof MethodSymbolEntry)
+			return (MethodSymbolEntry)symbolEntry;
+		return null;
 	}
 
 	public MethodSymbolEntry getCurrentMethodType() {
