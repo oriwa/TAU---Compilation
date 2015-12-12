@@ -419,14 +419,13 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		VisitResult dclrType =declarationStmt.type.accept(this,env);
 		Validator.validateLibraryInstantiation(dclrType.type, env, declarationStmt.line);
 		
-		SymbolEntry entry=env.addToEnv(declarationStmt);
+		env.addDeclaration(dclrType.type,declarationStmt.name,declarationStmt.line);
 		if(declarationStmt.value!=null)
 		{
 			VisitResult valueResult = declarationStmt.value.accept(this,env);
 			Validator.validateInitialized(valueResult, declarationStmt.line, env);
 			env.validateTypeMismatch(declarationStmt.type.name, valueResult.type, declarationStmt.line);
-			
-			entry.setIsInitialized(true);			
+			env.setEntryInitialized(declarationStmt.name);
 		}
 		return new VisitResult(false);
 	}

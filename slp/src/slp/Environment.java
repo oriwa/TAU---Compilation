@@ -109,39 +109,47 @@ public class Environment {
 		addTypeEntry(clss);
 	}
 
-	public SymbolEntry addToEnv(DeclarationStmt dclr){
-		return addToEnv(dclr.name, dclr.type.name, dclr.line, false);
-	}
-
-	public void addToEnv(FormalsList formals) {
-		for (Formals f : formals.formals) {
-			SymbolEntry symbolEntry =addToEnv(f.name, f.type.name, f.line, true);
-			symbolEntry.setIsInitialized(true);
-		}
-	}
-
-	private SymbolEntry addToEnv(String typeName, String SymbolId, int lineDefined,boolean isMethod)  {
-		TypeEntry type = getTypeEntry(typeName);
-		if (type == null) {
-			handleSemanticError("type \"" + typeName + "\" is undefined",
-					lineDefined);
-		}
-
-		if (symbolTable.isInCurrentScope(SymbolId)) {
-			String errorMsg = "ERROR: multiple definitions of " + SymbolId;
+	public SymbolEntry addDeclaration(TypeEntry type,String name,int line){
+		if (symbolTable.isInCurrentScope(name)) {
+			String errorMsg = "ERROR: multiple definitions of " + name;
 			String note = "note: first defined in line: "
-					+ symbolTable.getEntryByName(SymbolId).definedAt();
-			handleSemanticError(errorMsg + "\n" + note, lineDefined);
-		}
-		SymbolEntry newSymbol ;
-		if(isMethod){
-			newSymbol = new MethodSymbolEntry(SymbolId, type, lineDefined);
-			
-		}
-		newSymbol = new SymbolEntry(SymbolId, type, lineDefined);
+					+ symbolTable.getEntryByName(name).definedAt();
+			handleSemanticError(errorMsg + "\n" + note, line);
+		} 
+		SymbolEntry newSymbol = new SymbolEntry(name, type, line);
 		symbolTable.addToScope(newSymbol);
 		return newSymbol;
 	}
+
+//	public void addToEnv(FormalsList formals) {
+//		for (Formals f : formals.formals) {
+//			SymbolEntry symbolEntry =addToEnv(f.name, f.type.name, f.line, true);
+//			symbolEntry.setIsInitialized(true);
+//		}
+//	}
+
+//	private SymbolEntry addToEnv(String typeName, String SymbolId, int lineDefined,boolean isMethod)  {
+//		TypeEntry type = getTypeEntry(typeName);
+//		if (type == null) {
+//			handleSemanticError("type \"" + typeName + "\" is undefined",
+//					lineDefined);
+//		}
+//
+//		if (symbolTable.isInCurrentScope(SymbolId)) {
+//			String errorMsg = "ERROR: multiple definitions of " + SymbolId;
+//			String note = "note: first defined in line: "
+//					+ symbolTable.getEntryByName(SymbolId).definedAt();
+//			handleSemanticError(errorMsg + "\n" + note, lineDefined);
+//		}
+//		SymbolEntry newSymbol ;
+//		if(isMethod){
+//			newSymbol = new MethodSymbolEntry(SymbolId, type, lineDefined);
+//			
+//		}
+//		newSymbol = new SymbolEntry(SymbolId, type, lineDefined);
+//		symbolTable.addToScope(newSymbol);
+//		return newSymbol;
+//	}
 
 
 	public SymbolEntry getSymbolEntry(String refName)
