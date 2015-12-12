@@ -20,7 +20,7 @@ public class Environment {
 	 * name of the variable as a way of ensuring we a consistent mapping
 	 * for each variable. 
 	 */
-	private SymbolTable symbolTable = new SymbolTable();
+	private SymbolTable symbolTable;
 	
 	
 	
@@ -32,7 +32,7 @@ public class Environment {
 	 * */
 	private Map<String,TypeEntry> typeTableMap = new HashMap<String,TypeEntry>();
 	
-	private TypeEntry currentClassType;
+ 
 	private MethodSymbolEntry currentMethodType;
 	private Class currentClass;
 	private Method currentMethod;
@@ -242,6 +242,15 @@ public class Environment {
 		mainMethodNumber++;
 	}
 
+	
+	public SymbolTable getSymbolTable() {
+		return symbolTable;
+	}
+
+	public void setSymbolTable(SymbolTable symbolTable) {
+		this.symbolTable = symbolTable;
+	}
+	
 	public void enterScope() {
 		symbolTable.pushScope();
 	}
@@ -266,12 +275,11 @@ public class Environment {
 	}
 
 	public TypeEntry getCurrentClassType() {
-		return currentClassType;
+		if(currentClass==null)
+			return null;
+		return getTypeEntry(currentClass.name);
 	}
-
-	public void setCurrentClassType(TypeEntry currentClassType) {
-		this.currentClassType = currentClassType;
-	}
+ 
 
 	public MethodSymbolEntry getCurrentMethodType() {
 		return currentMethodType;
@@ -302,36 +310,47 @@ public class Environment {
 					handleSemanticError("Duplicate definition " + method.name + " in type " + clss.name,clss.line);
 				}
 				
+
 				TypeEntry methodType = this.getTypeEntry(method.type.name);
 				if(methodType==null){
 					handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);				
 				}
 				Validator.validateLibraryInstantiation(methodType,this,method.line);
 				
+
+				TypeEntry methodType =  Validator.validateType(method.type, this); 
+
 				MethodSymbolEntry methodSymbol =new MethodSymbolEntry(method.name, methodType, method.line);
 				TypeEntry tmpArgType;
 				for(Formals formal:method.formalsList.formals){
+
 					tmpArgType=this.getTypeEntry(formal.type.name);
 					if(tmpArgType==null){
 						handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);
 					}
 					Validator.validateLibraryInstantiation(methodType,this,method.line);
 					
+
+					tmpArgType=  Validator.validateType(formal.type, this);
+
 					methodSymbol.addToArgs(tmpArgType);
 				}
 				clssType.addToScopes(methodSymbol, method.isStatic);
 			}else{//dclr is Field
 				Field field=(Field)dclr;
-				TypeEntry fieldType = this.getTypeEntry(field.type.name);
-				if(fieldType==null){
-					handleSemanticError("type \"" + field.type.name + "\" is undefined", field.line);				
-				}
+
+				TypeEntry fieldType = Validator.validateType(field.type, this);
 				Validator.validateLibraryInstantiation(fieldType,this,field.line);
+				
+
 				
 				addField(field.name, alreadySeen, instanceScope, fieldType, field.line);
 				
 				for(String id : field.extraIDs.ids){
+
 					addField(id, alreadySeen, instanceScope, fieldType, field.line);
+
+
 				}
 				
 			}
