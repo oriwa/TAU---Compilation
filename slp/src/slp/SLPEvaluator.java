@@ -41,8 +41,10 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			if(stmtResult.hasReturnStatement)
 				hasReturnStatement=true;
 		}
-		env.leaveScope();
-		return new VisitResult(hasReturnStatement);
+		Scope prevScope=env.leaveScope();
+		VisitResult visitResult=new VisitResult(hasReturnStatement);
+		visitResult.prevScope=prevScope;
+		return visitResult;
 	}
 
 	public VisitResult visit(Stmt stmt, Environment env) {
@@ -52,6 +54,15 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 
 	public VisitResult visit(AssignStmt stmt, Environment env) {
+
+		VisitResult locationResult=stmt.location.accept(this, env);
+		VisitResult rhsResult=stmt.rhs.accept(this, env);
+		env.validateTypeMismatch(locationResult.type, rhsResult.type, stmt.line);
+		if(locationResult.uninitializedId!=null)
+			env.setEntryInitialized(locationResult.uninitializedId);
+		
+		//env.getSymbolEntry()
+		
 		//Expr rhs = stmt.rhs;
 		//Integer expressionValue = rhs.accept(this, env);
 		//AssignStmt var = stmt.location;
@@ -66,8 +77,23 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 
 	public VisitResult visit(VarExpr expr, Environment env) {
-		//return env.get(expr);
-		return null;
+		VisitResult visitResult=new VisitResult();
+		if(expr.target_expr!=null)
+		{
+			expr.target_expr.accept(this, env);
+			//TODO:Check field validity
+		}
+		else
+		{ 
+			SymbolEntry symbolEntry=env.getSymbolEntry(expr.name);
+			if(symbolEntry==null)
+				env.handleSemanticError(expr.name +" cannot be resolved to a variable"  ,expr.line);
+			visitResult.type=symbolEntry.getEntryTypeID();
+			visitResult.isInitialized=symbolEntry.getIsInitialized();
+			if(visitResult.isInitialized)
+				visitResult.uninitializedId=expr.name;
+		}
+		return visitResult;
 	}
 
 	public VisitResult visit(NumberExpr expr, Environment env) {
@@ -332,6 +358,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	
 
 	public VisitResult visit(IfStmt ifStmt, Environment env) {
+		
 		VisitResult exprResult= ifStmt.expr.accept(this,env);
 		env.validateTypeMismatch(Environment.BOOLEAN,exprResult.type,ifStmt.line);
 		
@@ -339,9 +366,11 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		if (createScope)
 			env.enterScope();		
 		VisitResult ifStmtResult= ifStmt.ifStmt.accept(this,env);
+		Scope ifScope=ifStmtResult.prevScope;
 		boolean hasReturn=ifStmtResult.hasReturnStatement;
 		if (createScope)
-			env.leaveScope();
+			ifScope=env.leaveScope();
+
 
 		if(ifStmt.elseStmt!=null)
 		{
@@ -349,23 +378,34 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			if (createScope)
 				env.enterScope();
 			VisitResult elseStmtResult=ifStmt.elseStmt.accept(this,env);
+			Scope elseScope=elseStmtResult.prevScope;
 			hasReturn=hasReturn && elseStmtResult.hasReturnStatement;
 			if (createScope)
-				env.leaveScope();
+				elseScope=env.leaveScope();
+			setInitializedEntriesInBothScopes(ifScope,elseScope,env);
 
 		}
 		
 		return new VisitResult(hasReturn);
 	}
 
+	private void setInitializedEntriesInBothScopes(Scope ifScope,Scope elseScope, Environment env) 
+	{
+		for (SymbolEntry entry : ifScope.scopeInitializedEntries) 
+		{					
+			if(elseScope.scopeInitializedEntries.contains(entry))
+				env.setEntryInitialized(entry.getEntryName());							
+		}
+	}
+
 	public VisitResult visit(WhileStmt whileStmt, Environment env) {
 		VisitResult whileExprResult =whileStmt.expr.accept(this,env);
 		
 		env.validateTypeMismatch(Environment.BOOLEAN,whileExprResult.type,whileStmt.line);
-		boolean hasReturn=false;
+		boolean isWhileTrue=false;
 		if(whileExprResult.value!=null)
 		{
-			 hasReturn=((Boolean)whileExprResult.value).booleanValue();
+			isWhileTrue=((Boolean)whileExprResult.value).booleanValue();
 		}
 		
 		boolean createScope = !(whileStmt.stmt instanceof StmtList);
@@ -373,12 +413,28 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			env.enterScope();		
 		env.setIsInLoop(true);
 		VisitResult whileStmtResult=whileStmt.stmt.accept(this,env);
-		hasReturn=hasReturn&&whileStmtResult.hasReturnStatement;
+		Scope preScope=whileStmtResult.prevScope;
+		boolean hasReturn=isWhileTrue&&whileStmtResult.hasReturnStatement;
 		env.setIsInLoop(false);
 		if (createScope)
-			env.leaveScope();		
-
+			preScope=env.leaveScope();		
+		
+		if(isWhileTrue)
+			setInitializedToOldEntries(preScope, env);
+							
 		return new VisitResult(hasReturn);
+	}
+
+	private void setInitializedToOldEntries(Scope preScope, Environment env) {
+		
+		HashSet<SymbolEntry> entries=new HashSet<SymbolEntry>(preScope.scopeInitializedEntries);
+		for (SymbolEntry symbolEntry : preScope.items) {
+			if(entries.contains(symbolEntry))
+				entries.remove(symbolEntry);
+		}
+		for (SymbolEntry symbolEntry : entries) {
+			env.setEntryInitialized(symbolEntry.getEntryName());
+		}
 	}
 
 	public VisitResult visit(BreakStmt breakStmt, Environment env) {
@@ -395,11 +451,12 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 	public VisitResult visit(DeclarationStmt declarationStmt, Environment env) {
 		declarationStmt.type.accept(this,env);
-		//TODO: Add to Symbol Type and handle init 
+		SymbolEntry entry=env.addToEnv(declarationStmt);
 		if(declarationStmt.value!=null)
 		{
 			VisitResult valueResult = declarationStmt.value.accept(this,env);
 			env.validateTypeMismatch(declarationStmt.type.name, valueResult.type, declarationStmt.line);
+			entry.setIsInitialized(true);			
 		}
 		return new VisitResult(false);
 	}
@@ -522,6 +579,13 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 	public VisitResult visit(NullExpr expr, Environment env) { 
 		return new VisitResult(env.getTypeEntry(Environment.NULL));
+	}
+
+	public VisitResult visit(InstantExpr expr, Environment env) {
+		TypeEntry classType= env.getTypeEntry(expr.className); 
+		if(classType.getClass()!=null)
+			env.handleSemanticError("cannot create an instance of type  "+expr.className, expr.line);
+		return new VisitResult(classType);
 	}
 
 
