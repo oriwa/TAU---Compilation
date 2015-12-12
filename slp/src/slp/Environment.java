@@ -2,6 +2,8 @@ package slp;
 
 import java.util.*;
 
+import java_cup.symbol;
+
 
 /** Represents a state during the evaluation of a program. 
  */
@@ -109,18 +111,27 @@ public class Environment {
 		addTypeEntry(clss);
 	}
 
+
 	public SymbolEntry addDeclaration(TypeEntry type,String name,int line){
 		if (symbolTable.isInCurrentScope(name)) {
 			String errorMsg = "ERROR: multiple definitions of " + name;
 			String note = "note: first defined in line: "
 					+ symbolTable.getEntryByName(name).definedAt();
 			handleSemanticError(errorMsg + "\n" + note, line);
-		} 
+		}
 		SymbolEntry newSymbol = new SymbolEntry(name, type, line);
-		symbolTable.addToScope(newSymbol);
+	     symbolTable.addToScope(newSymbol);
 		return newSymbol;
 	}
 
+	public void addToEnv(FormalsList formals) {
+		for (Formals f : formals.formals) {
+			
+			SymbolEntry symbolEntry =addDeclaration(Validator.validateType( f.type, this),f.name, f.line);
+			symbolEntry.setIsInitialized(true);
+		}
+	}
+ 
 //	public void addToEnv(FormalsList formals) {
 //		for (Formals f : formals.formals) {
 //			SymbolEntry symbolEntry =addToEnv(f.name, f.type.name, f.line, true);
@@ -288,6 +299,14 @@ public class Environment {
 		return getTypeEntry(currentClass.name);
 	}
  
+
+	public MethodSymbolEntry getMethodInClass(String methodName,  boolean isStatic, TypeEntry classType){
+		SymbolTable symbolTable = classType.getScope(isStatic);
+		SymbolEntry symbolEntry = symbolTable.getEntryByName(methodName);
+		if (symbolEntry instanceof MethodSymbolEntry)
+			return (MethodSymbolEntry)symbolEntry;
+		return null;
+	}
 
 	public MethodSymbolEntry getCurrentMethodType() {
 		return currentMethodType;

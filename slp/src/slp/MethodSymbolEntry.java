@@ -15,5 +15,7 @@ public class MethodSymbolEntry extends SymbolEntry{
 		methodArgs.add(argType);
 	}
 	
-	
+	public List<TypeEntry> getMethodArgs(){
+		return methodArgs;
+	}
 }
