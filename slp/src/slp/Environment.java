@@ -105,13 +105,17 @@ public class Environment {
 		addTypeEntry(clss);
 	}
 
-	public void addToEnv(DeclarationStmt dclr){
-		addToEnv(dclr.name, dclr.type.name, dclr.line, false);
+	public SymbolEntry addToEnv(DeclarationStmt dclr){
+		return addToEnv(dclr.name, dclr.type.name, dclr.line, false);
 	}
 
 	public void addToEnv(Field field)  {
+		
+		SymbolEntry symbolEntry =addToEnv(field.type.name, field.name, field.line, false);
+		symbolEntry.setIsInitialized(true);
 		for (String id : field.extraIDs.ids) {
-			addToEnv(field.name, id, field.line, false);
+			symbolEntry =addToEnv(field.type.name, id, field.line, false);
+			symbolEntry.setIsInitialized(true);
 		}
 	}
 
@@ -123,7 +127,8 @@ public class Environment {
 
 	public void addToEnv(FormalsList formals) {
 		for (Formals f : formals.formals) {
-			addToEnv(f.name, f.type.name, f.line, true);
+			SymbolEntry symbolEntry =addToEnv(f.name, f.type.name, f.line, true);
+			symbolEntry.setIsInitialized(true);
 		}
 	}
 
@@ -151,6 +156,10 @@ public class Environment {
 	}
 
 
+	public SymbolEntry getSymbolEntry(String refName)
+	{
+		return symbolTable.getEntryByName(refName);
+	}
 
 	private void initPrimitiveTypeEntrys() {
 		for (String type : PRIMITIVE_TYPES) {
@@ -177,7 +186,7 @@ public class Environment {
 
 	public TypeEntry getTypeEntry(String name) {
 		if (typeTableMap.containsKey(name))
-		return typeTableMap.get(name);
+			return typeTableMap.get(name);
 		return null;
 	}
 
@@ -221,9 +230,16 @@ public class Environment {
 		symbolTable.pushScope();
 	}
 
-	public void leaveScope() {
-		symbolTable.popScope();
+	public Scope leaveScope() {
+		return symbolTable.popScope();
 	}
+	
+	
+	public void setEntryInitialized(String refName) {
+		
+		symbolTable.setEntryInitialized(refName);
+	}
+	
 
 	public TypeEntry getExprType(TypeEntry exprType, String fieldName) {
 		
