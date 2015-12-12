@@ -46,6 +46,9 @@ public class TypeEntry {
 		return entryName+arrBrackets;
 	}
 
+	public void setPrimitive(boolean primitive){
+		isPrimitive = primitive;
+	}
 	public boolean isPrimitive() {
 		return isPrimitive;
 	}

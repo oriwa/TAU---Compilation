@@ -21,29 +21,37 @@ public class SymbolTable {
 	 * */
 	private Stack<List<Stack<SymbolEntry>>> scopes;
 	
+	private Stack<HashSet<SymbolEntry>> scopesInitializedEntries;
+	
 	public SymbolTable(){
 		scopes=new Stack<List<Stack<SymbolEntry>>>(); 
+		scopesInitializedEntries=new Stack<HashSet<SymbolEntry>>(); 
 		map =new HashMap<String, Stack<SymbolEntry>>();
 	}
 	
 	/**
 	 * Dismiss the last Scope that has been defined (do when exiting the scope)	
 	 * */
-	public List<SymbolEntry> popScope(){
+	public Scope popScope(){
+		HashSet<SymbolEntry>  scopeInitializedEntries=scopesInitializedEntries.pop();
+		resetInitialized(scopeInitializedEntries);
 		List<Stack<SymbolEntry>> lastScope= scopes.pop();
 		List<SymbolEntry> items=new ArrayList<SymbolEntry>();
 		for(Stack<SymbolEntry> entryList: lastScope){
 			items.add(entryList.pop());
 			if(entryList.isEmpty())entryList=null;
 		}
-		return items;
+		return new Scope(items,scopeInitializedEntries);
 	}
 	
+
+
 	/**
 	 * 	create an entirely new scope of names
 	 * */
 	public void pushScope(){
 		scopes.push(new LinkedList<Stack<SymbolEntry>>());
+		scopesInitializedEntries.push(new HashSet<SymbolEntry>());
 	}
 	
 	/**
@@ -83,5 +91,23 @@ public class SymbolTable {
 		return false;
 	}
 	
+	
+	public void setEntryInitialized(String refName) {
+	
+		SymbolEntry symbolEntry=getEntryByName(refName);
+		if(!symbolEntry.getIsInitialized())			
+		{
+			symbolEntry.setIsInitialized(true);
+			scopesInitializedEntries.peek().add(symbolEntry);
+		}
+	}
+	
+	
+	private void resetInitialized(HashSet<SymbolEntry> prevScopeInitializedEntries)
+	{
+		for (SymbolEntry symbolEntry : prevScopeInitializedEntries) {
+			symbolEntry.setIsInitialized(false);
+		}
+	}
 	
 }

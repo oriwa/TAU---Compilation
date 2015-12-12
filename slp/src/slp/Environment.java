@@ -10,7 +10,8 @@ public class Environment {
 	public static final String INT="int";
 	public static final String BOOLEAN="boolean";
 	public static final String STRING="string";
-
+	public static final String NULL="null";
+	
 	private static final String[] PRIMITIVE_TYPES={INT,BOOLEAN,STRING};
 	
 	
@@ -41,6 +42,9 @@ public class Environment {
 	
 	public Environment(){
 		initPrimitiveTypeEntrys();
+		TypeEntry nullEntry = new TypeEntry(typeTable.size(), NULL);
+		nullEntry.setPrimitive(false);
+		addTypeEntry(nullEntry);
 	}
 	
 	public void handleSemanticError(String error,int line)
@@ -51,10 +55,26 @@ public class Environment {
 	
 	public void validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType,int line)
 	{
-		//TODO: Add inheritance support
-		if(!isDimensionEqual(expectedType,actualType) || !isA(expectedType,actualType))
+		if(!validateTypeMismatch(expectedType,actualType))
 			handleSemanticError("type mismatch: cannot convert from "+actualType.getEntryName()+" to "+expectedType.getEntryName(),line);
-			
+	}
+	
+	private boolean validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType){
+		int expectedDimension = expectedType.getTypeDimension();
+		int actualDimension = actualType.getTypeDimension();
+		
+		if (expectedDimension != actualDimension)
+			return false;
+		
+		boolean isArray = expectedDimension != 0;
+		if (isArray && expectedType.getEntryId() != actualType.getEntryId())
+			return false;
+		
+		if (!isA(expectedType, actualType))
+			return false;
+		
+		return true;
+
 	}
 	
 	public void validateTypeMismatch(String expectedTypeName,TypeEntry actualType,int line)
@@ -66,25 +86,6 @@ public class Environment {
 	{
 		validateTypeMismatch(getTypeEntry(expectedTypeName),getTypeEntry(actualTypeId), line);
 	}
-	
-	
-	private boolean isDimensionEqual(TypeEntry type1, TypeEntry type2) {
-		if(type1.getClass()==type2.getClass()){
-			if(type1.getClass()==ArrayTypeEntry.class){
-				ArrayTypeEntry arr1 =(ArrayTypeEntry)type1;
-				ArrayTypeEntry arr2 =(ArrayTypeEntry)type2;
-				return arr1.getTypeDimension()==arr2.getTypeDimension();
-			}
-		}
-		ArrayTypeEntry arr;
-		if(type1.getClass()==ArrayTypeEntry.class){
-			arr =(ArrayTypeEntry)type1;
-			
-		}else{
-			arr = (ArrayTypeEntry)type2;
-		}
-		return arr.getTypeDimension()==0;
-	}
 
 	public boolean isA(TypeEntry potentialAncestor,
 			TypeEntry potentialdescendant) {
@@ -94,11 +95,58 @@ public class Environment {
 		if (potentialdescendant.isPrimitive()) {
 			return false;
 		}
+		if (potentialAncestor.getEntryName() == NULL){
+			return true;
+		}
 		String parentName = potentialdescendant.getEntryClass().extends_name;
 		if (parentName != null) { // else no-parent
 			return isA(typeTableMap.get(parentName), potentialAncestor);
 		}
 		return false;
+	}
+
+	public void addToEnv(Class clss) {
+		addTypeEntry(clss);
+	}
+
+	public SymbolEntry addToEnv(DeclarationStmt dclr){
+		return addToEnv(dclr.name, dclr.type.name, dclr.line, false);
+	}
+
+	public void addToEnv(FormalsList formals) {
+		for (Formals f : formals.formals) {
+			SymbolEntry symbolEntry =addToEnv(f.name, f.type.name, f.line, true);
+			symbolEntry.setIsInitialized(true);
+		}
+	}
+
+	private SymbolEntry addToEnv(String typeName, String SymbolId, int lineDefined,boolean isMethod)  {
+		TypeEntry type = getTypeEntry(typeName);
+		if (type == null) {
+			handleSemanticError("type \"" + typeName + "\" is undefined",
+					lineDefined);
+		}
+
+		if (symbolTable.isInCurrentScope(SymbolId)) {
+			String errorMsg = "ERROR: multiple definitions of " + SymbolId;
+			String note = "note: first defined in line: "
+					+ symbolTable.getEntryByName(SymbolId).definedAt();
+			handleSemanticError(errorMsg + "\n" + note, lineDefined);
+		}
+		SymbolEntry newSymbol ;
+		if(isMethod){
+			newSymbol = new MethodSymbolEntry(SymbolId, type, lineDefined);
+			
+		}
+		newSymbol = new SymbolEntry(SymbolId, type, lineDefined);
+		symbolTable.addToScope(newSymbol);
+		return newSymbol;
+	}
+
+
+	public SymbolEntry getSymbolEntry(String refName)
+	{
+		return symbolTable.getEntryByName(refName);
 	}
 
 	private void initPrimitiveTypeEntrys() {
@@ -118,7 +166,7 @@ public class Environment {
 		if(previousDef!=null){
 			String errorMsg="ERROR: multiple definitions of class \""+clss.name+"\"";
 			String note="note: first defined in line: "+previousDef.getEntryClass().line;
-			Validator.handleSemanticError(errorMsg+"\n"+note,clss.line);
+			handleSemanticError(errorMsg+"\n"+note,clss.line);
 		}
 		
 		TypeEntry typeEntry = new TypeEntry(typeTable.size(), clss.name, clss);
@@ -131,13 +179,13 @@ public class Environment {
 					typeEntry.expandScope(extendsTypeEntry);
 				}
 				else{
-					Validator.handleSemanticError("can not extend form class" + clss.extends_name,clss.line);	
+					handleSemanticError("can not extend form class" + clss.extends_name,clss.line);	
 				}
 				
 			}
 			else
 			{					
-				Validator.handleSemanticError("class \""+clss.extends_class.name +"\" is undefined, classes can only extend previously defined classes",clss.line);
+				handleSemanticError("class \""+clss.extends_class.name +"\" is undefined, classes can only extend previously defined classes",clss.line);
 			}
 		}
 		
@@ -153,7 +201,7 @@ public class Environment {
 
 	public TypeEntry getTypeEntry(String name) {
 		if (typeTableMap.containsKey(name))
-		return typeTableMap.get(name);
+			return typeTableMap.get(name);
 		return null;
 	}
 
@@ -197,8 +245,14 @@ public class Environment {
 		symbolTable.pushScope();
 	}
 
-	public void leaveScope() {
-		symbolTable.popScope();
+	public Scope leaveScope() {
+		return symbolTable.popScope();
+	}
+	
+	
+	public void setEntryInitialized(String refName) {
+		
+		symbolTable.setEntryInitialized(refName);
 	}
 
 	public TypeEntry getExprType(TypeEntry exprType, String fieldName) {
@@ -239,14 +293,14 @@ public class Environment {
 			if(dclr.getClass()==Method.class){
 				Method method=(Method)dclr;
 				if(alreadySeen.contains(method.name)){
-					Validator.handleSemanticError("Duplicate definition " + method.name + " in type " + clss.name,clss.line);	
+					handleSemanticError("Duplicate definition " + method.name + " in type " + clss.name,clss.line);	
 				}
 				
 				alreadySeen.add(method.name);
 				
 				TypeEntry methodType = this.getTypeEntry(method.type.name);
 				if(methodType==null){
-					Validator.handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);				
+					handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);				
 				}
 				
 				MethodSymbolEntry methodSymbol =new MethodSymbolEntry(method.name, methodType, method.line);
@@ -254,7 +308,7 @@ public class Environment {
 				for(Formals formal:method.formalsList.formals){
 					tmpArgType=this.getTypeEntry(formal.type.name);
 					if(tmpArgType==null){
-						Validator.handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);
+						handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);
 					}
 					methodSymbol.addToArgs(tmpArgType);
 				}
@@ -263,10 +317,10 @@ public class Environment {
 				Field field=(Field)dclr;
 				TypeEntry fieldType = this.getTypeEntry(field.type.name);
 				if(fieldType==null){
-					Validator.handleSemanticError("type \"" + field.type.name + "\" is undefined", field.line);				
+					handleSemanticError("type \"" + field.type.name + "\" is undefined", field.line);				
 				}
 				if(alreadySeen.contains(field.name)||clssType.isNameTaken(field.name)){
-					Validator.handleSemanticError("Duplicate definition " + field.name + " in type " + clss.name,clss.line);	
+					handleSemanticError("Duplicate definition " + field.name + " in type " + clss.name,clss.line);	
 				}
 				alreadySeen.add(field.name);
 				SymbolEntry fieldSymbol =new SymbolEntry(field.name, clssType, field.line);
@@ -274,7 +328,7 @@ public class Environment {
 				clssType.addToScopes(fieldSymbol, false);
 				for(String id : field.extraIDs.ids){
 					if(alreadySeen.contains(id)||clssType.isNameTaken(id)){
-						Validator.handleSemanticError("Duplicate definition " + id + " in type " + clss.name,clss.line);	
+						handleSemanticError("Duplicate definition " + id + " in type " + clss.name,clss.line);	
 					}
 					alreadySeen.add(id);
 					fieldSymbol =new SymbolEntry(id, clssType, field.line);
