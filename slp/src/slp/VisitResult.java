@@ -7,7 +7,7 @@ public class VisitResult {
 	public Object value;
 	public boolean hasReturnStatement;
 	public String uninitializedId;
-	public boolean isInitialized;
+	public boolean isInitialized=true;
 	public Scope prevScope;
 	
 	
