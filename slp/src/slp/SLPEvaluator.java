@@ -1,17 +1,20 @@
 package slp;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /** Evaluates straight line programs.
  */
-public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
+public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult> {
 	
 	
 
 	private static final String MAIN_METHOD="main";
 	
 	protected ASTNode root;
-
+	
 	/** Constructs an SLP interpreter for the given AST.
 	 * 
 	 * @param root An SLP AST node.
@@ -30,20 +33,24 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 	
 	
 	
-	public Integer visit(StmtList stmts, Environment env) {
+	public VisitResult visit(StmtList stmts, Environment env) {
+		
+		boolean hasReturnStatement=false;
 		for (Stmt st : stmts.statements) {
-			st.accept(this, env);
+			VisitResult stmtResult=st.accept(this, env);
+			if(stmtResult.hasReturnStatement)
+				hasReturnStatement=true;
 		}
-		return null;
+		return new VisitResult(hasReturnStatement);
 	}
 
-	public Integer visit(Stmt stmt, Environment env) {
+	public VisitResult visit(Stmt stmt, Environment env) {
 		throw new UnsupportedOperationException("Unexpected visit of Stmt!");
 	}
 
 
 
-	public Integer visit(AssignStmt stmt, Environment env) {
+	public VisitResult visit(AssignStmt stmt, Environment env) {
 		//Expr rhs = stmt.rhs;
 		//Integer expressionValue = rhs.accept(this, env);
 		//AssignStmt var = stmt.location;
@@ -51,76 +58,96 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		return null;
 	}
 
-	public Integer visit(Expr expr, Environment env) {
+	public VisitResult visit(Expr expr, Environment env) {
 		throw new UnsupportedOperationException("Unexpected visit of Expr!");
 	}
 
 
 
-	public Integer visit(VarExpr expr, Environment env) {
+	public VisitResult visit(VarExpr expr, Environment env) {
 		//return env.get(expr);
 		return null;
 	}
 
-	public Integer visit(NumberExpr expr, Environment env) {
-		return new Integer(expr.value);		
-		// return expr.value; also works in Java 1.5 because of auto-boxing
+	public VisitResult visit(NumberExpr expr, Environment env) {
+
+		return new VisitResult(env.getTypeEntry(Environment.INT),expr.value);
 	}
 
-	public Integer visit(UnaryOpExpr expr, Environment env) {
-		Operator op = expr.op;
-		if (op != Operator.MINUS)
-			throw new RuntimeException("Encountered unexpected operator " + op);
-		Integer value = expr.operand.accept(this, env);
-		return new Integer(- value.intValue());
+	public VisitResult visit(UnaryOpExpr expr, Environment env) {
+
+
+		VisitResult value = expr.operand.accept(this, env);	  
+		Validator.validateIlegalOp(value.type, expr.op, expr.line,env);
+		return new VisitResult(value.type);
 	}
 
-	public Integer visit(BinaryOpExpr expr, Environment env) {
-		Integer lhsValue = expr.lhs.accept(this, env);
-		int lhsInt = lhsValue.intValue();
-		Integer rhsValue = expr.rhs.accept(this, env);
-		int rhsInt = rhsValue.intValue();
-		int result;
-		switch (expr.op) {
-		case DIVIDE:
-			if (rhsInt == 0)
-				throw new RuntimeException("Attempt to divide by zero: " + expr);
-			result = lhsInt / rhsInt;
-			break;
-		case MINUS:
-			result = lhsInt - rhsInt;
-			break;
-		case MULTIPLY:
-			result = lhsInt * rhsInt;
-			break;
+	public VisitResult visit(BinaryOpExpr expr, Environment env) {
+		VisitResult lhsValue = expr.lhs.accept(this, env);
+		VisitResult rhsValue = expr.rhs.accept(this, env);
+		
+		Validator.validateIlegalOp(lhsValue.type,lhsValue.type,expr.op, expr.line,env);
+
+
+		switch (expr.op){
 		case PLUS:
-			result = lhsInt + rhsInt;
-			break;
-		case LT:
-			result = lhsInt < rhsInt ? 1 : 0;
-			break;
-		case GT:
-			result = lhsInt > rhsInt ? 1 : 0;
-			break;
-		case LTE:
-			result = lhsInt <= rhsInt ? 1 : 0;
-			break;
-		case GTE:
-			result = lhsInt >= rhsInt ? 1 : 0;
-			break;
-		case LAND:
-			result = (lhsInt!=0 && rhsInt!=0) ? 1 : 0;
-			break;
-		case LOR:
-			result = (lhsInt!=0 || rhsInt!=0) ? 1 : 0;
-			break;
+			if(lhsValue.type.getEntryId()==env.getTypeEntry(Environment.STRING).getEntryId())
+				return new VisitResult(env.getTypeEntry(Environment.STRING));
+			else
+				return new VisitResult(env.getTypeEntry(Environment.INT));
+				
+		case MINUS:
+		case MULTIPLY:
+		case DIVIDE:
+		case MOD:
+			return new VisitResult(env.getTypeEntry(Environment.INT));
 		default:
-			throw new RuntimeException("Encountered unexpected operator type: " + expr.op);
+			//All other operations yield boolean result
+			return new VisitResult(env.getTypeEntry(Environment.BOOLEAN));
 		}
-		return new Integer(result);
+		
+		
+//		int result = 0;
+//		switch (expr.op) {
+//		case DIVIDE:
+//			if (rhsInt == 0)
+//				env.handleSemanticError("Attempt to divide by zero: " + expr, expr.line);
+//			result = lhsInt / rhsInt;
+//			break;
+//		case MINUS:
+//			result = lhsInt - rhsInt;
+//			break;
+//		case MULTIPLY:
+//			result = lhsInt * rhsInt;
+//			break;
+//		case PLUS:
+//			result = lhsInt + rhsInt;
+//			break;
+//		case LT:
+//			result = lhsInt < rhsInt ? 1 : 0;
+//			break;
+//		case GT:
+//			result = lhsInt > rhsInt ? 1 : 0;
+//			break;
+//		case LTE:
+//			result = lhsInt <= rhsInt ? 1 : 0;
+//			break;
+//		case GTE:
+//			result = lhsInt >= rhsInt ? 1 : 0;
+//			break;
+//		case LAND:
+//			result = (lhsInt!=0 && rhsInt!=0) ? 1 : 0;
+//			break;
+//		case LOR:
+//			result = (lhsInt!=0 || rhsInt!=0) ? 1 : 0;
+//			break;
+//		default:
+//			env.handleSemanticError("Encountered unexpected operator type: " + expr.op, expr.line);
+//		}
+
 	}
 
-	public Integer visit(Program program, Environment env)  {
+	public VisitResult visit(Program program, Environment env)  {
 		initTypeTable(program.classList,env);
 		program.classList.accept(this, env);
 		if(env.getMainMethodNumber()==0)
@@ -165,42 +192,68 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		loader.load(env);	
 	}
 
-	public Integer visit(ClassList classes, Environment env) {
+	public VisitResult visit(ClassList classes, Environment env) {
 		for (Class clss : classes.classes) {
 			clss.accept(this, env);
 		}
 		return null;
 	}
 
-	public Integer visit(Class clss, Environment env) {
+	public VisitResult visit(Class clss, Environment env)  {
 		env.setCurrentClass(clss);
+		env.enterScope();
+		
+		//check duplicate methods
+		Set<String> tempSet = new HashSet<String>();
+		for (Method method : clss.dclrList.methods){
+			if (!tempSet.add(method.name)) // set.add returns false if already exists
+				env.handleSemanticError("Duplicate method " + method.name + " in type " + clss.name,clss.line);
+			
+		}
+		
+		//check duplicate fields and add to environment
+		tempSet = new HashSet<String>();
+		for (Field field : clss.dclrList.fields){
+			if (!tempSet.add(field.name)) // set.add returns false if already exists
+				env.handleSemanticError("Duplicate field " + clss.name + "." + field.name,clss.line);
+			
+			env.addToEnv(field);
+		}
+		
 		clss.dclrList.accept(this, env);
+		env.leaveScope();
 		env.setCurrentClass(null);
+		
 		return null;
 	}
 
-	public Integer visit(DclrList list, Environment env) {
+	public VisitResult visit(DclrList list, Environment env) {
 		for (Field field : list.fields) {
 			field.accept(this, env);
 		}
 		for (Method method : list.methods) {
 			method.accept(this, env);
 		}
+		
+//		for (Dclr decleration : list.declarations) {
+//			decleration.accept(this, env);
+//		}
+
 		return null;
 	}
 	
 
-	public Integer visit(Field field, Environment d) {
+	public VisitResult visit(Field field, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public Integer visit(ExtraIDs extraIDs, Environment d) {
+	public VisitResult visit(ExtraIDs extraIDs, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public Integer visit(Method method, Environment env) {
+	public VisitResult visit(Method method, Environment env) {
 		
 		//TODO Add method id validation
 		
@@ -210,10 +263,13 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		
 		env.setCurrentMethod(method);
 		method.formalsList.accept(this, env);
-		method.stmtList.accept(this, env);
+		VisitResult stmtListResult=method.stmtList.accept(this, env);
+		if(!stmtListResult.hasReturnStatement && method.type!=null)
+			env.handleSemanticError("this method must return a result of type "+method.type.name, method.line);
 		env.setCurrentMethod(null);
 		return null;
-	}
+	} 
+	 
 
 	private boolean IsMainMethod(Method method) {
 
@@ -229,109 +285,220 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, Integer> {
 		return false;
 	}
 
-	public Integer visit(FormalsList formalsList, Environment d) {
+	public VisitResult visit(FormalsList formalsList, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public Integer visit(Formals formals, Environment d) {
+	public VisitResult visit(Formals formals, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public Integer visit(Type type, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
+	public VisitResult visit(Type type, Environment env) {
+		TypeEntry typeEntry=env.getTypeEntry(type.name);
+		if(typeEntry==null)
+		{
+			env.handleSemanticError(type.name +" cannot be resolved to a type", type.line);		
+		}
+		return new VisitResult(typeEntry);
 	}
 
-	public Integer visit(CallStmt callStmt, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
+	public VisitResult visit(CallStmt callStmt, Environment env) {
+		callStmt.call.accept(this, env);
+		return new VisitResult();
 	}
 
-	public Integer visit(ReturnStmt returnStmt, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
+	public VisitResult visit(ReturnStmt returnStmt, Environment env) {
+		
+		Method currentMethod=env.getCurrentMethod();
+		if(returnStmt.expr==null)
+		{
+			if(currentMethod.type!=null)
+			{
+				env.handleSemanticError("this method must return a result of type "+currentMethod.type.name, returnStmt.line);				
+			}
+		}
+		else
+		{
+			VisitResult exprResult= returnStmt.expr.accept(this,env);
+			env.validateTypeMismatch(currentMethod.type.name, exprResult.type, returnStmt.line);
+		}
+		return new VisitResult(true);
 	}
 
-	public Integer visit(IfStmt ifStmt, Environment env) {
-		Integer exprTypeId= ifStmt.expr.accept(this,env);
-		env.validateTypeMismatch(Environment.BOOLEAN,exprTypeId,ifStmt.line);
-		ifStmt.ifStmt.accept(this,env);
+	
+	
+
+	public VisitResult visit(IfStmt ifStmt, Environment env) {
+		VisitResult exprResult= ifStmt.expr.accept(this,env);
+		env.validateTypeMismatch(Environment.BOOLEAN,exprResult.type,ifStmt.line);
+		VisitResult ifStmtResult= ifStmt.ifStmt.accept(this,env);
+		boolean hasReturn=ifStmtResult.hasReturnStatement;
 		if(ifStmt.elseStmt!=null)
-			ifStmt.elseStmt.accept(this,env);
-		return null;
+		{
+			VisitResult elseStmtResult=ifStmt.elseStmt.accept(this,env);
+			hasReturn=hasReturn&&elseStmtResult.hasReturnStatement;
+		}
+		return new VisitResult(hasReturn);
 	}
 
-	public Integer visit(WhileStmt whileStmt, Environment env) {
-		Integer exprTypeId= whileStmt.expr.accept(this,env);
-		env.validateTypeMismatch(Environment.BOOLEAN,exprTypeId,whileStmt.line);
+	public VisitResult visit(WhileStmt whileStmt, Environment env) {
+		VisitResult whileExprResult =whileStmt.expr.accept(this,env);
+		env.validateTypeMismatch(Environment.BOOLEAN,whileExprResult.type,whileStmt.line);
+		boolean hasReturn=false;
+		if(whileExprResult.value!=null)
+		{
+			 hasReturn=((Boolean)whileExprResult.value).booleanValue();
+		}
 		env.setIsInLoop(true);
-		whileStmt.stmt.accept(this,env);
+		VisitResult whileStmtResult=whileStmt.stmt.accept(this,env);
+		hasReturn=hasReturn&&whileStmtResult.hasReturnStatement;
 		env.setIsInLoop(false);
-		return null;
+		return new VisitResult(hasReturn);
 	}
 
-	public Integer visit(BreakStmt breakStmt, Environment env) {
+	public VisitResult visit(BreakStmt breakStmt, Environment env) {
 		if(!env.getIsInLoop())
 			env.handleSemanticError("break cannot be used outside of a while", breakStmt.line);
-		return null;
+		return new VisitResult(false);
 	}
 
-	public Integer visit(ContinueStmt continueStmt, Environment env) {
+	public VisitResult visit(ContinueStmt continueStmt, Environment env) {
 		if(!env.getIsInLoop())
 			env.handleSemanticError("continue cannot be used outside of a while", continueStmt.line);
-		return null;
+		return new VisitResult(false);
 	}
 
-	public Integer visit(DeclarationStmt declarationStmt, Environment d) {
+	public VisitResult visit(DeclarationStmt declarationStmt, Environment env) {
+		declarationStmt.type.accept(this,env);
+		//TODO: Add to Symbol Type and handle init 
+		if(declarationStmt.value!=null)
+		{
+			VisitResult valueResult = declarationStmt.value.accept(this,env);
+			env.validateTypeMismatch(declarationStmt.type.name, valueResult.type, declarationStmt.line);
+		}
+		return new VisitResult(false);
+	}
+
+	public VisitResult visit(VirtualCall virtualCall, Environment env) {
+		VisitResult exprResult= virtualCall.expr.accept(this, env);
+		TypeEntry exprType =exprResult.type;
+		
+		if (exprType.isPrimitive())
+			env.handleSemanticError("Cannot invoke " + virtualCall.name + " on primitive type " + exprType.getEntryName(), virtualCall.line);
+
+		Method m = env.getMethod(exprType.getEntryClass(), virtualCall.name);
+		if (m == null)
+			env.handleSemanticError("The method " + virtualCall.name + " is undefined for the type " + exprType.getEntryName(), virtualCall.line);
+
+		if (m.isStatic)
+			env.handleSemanticError("Cannot invoke static method " + virtualCall.name + " on an instance", virtualCall.line);
+
+		boolean isCallValid = verifyMethodCall(m.formalsList.formals, virtualCall.callArgs.expressions, env);
+		if (!isCallValid)
+			env.handleSemanticError("The method " + virtualCall.name + " is undefined for the argumetns " + virtualCall.callArgs.expressions.toString(), virtualCall.line);
+
+		TypeEntry type=env.getTypeEntry(m.type.name);
+		if(m.type.array_dimension!=0)
+			type=ArrayTypeEntry.makeArrayTypeEntry(type,m.type.array_dimension);
+		return new VisitResult(type);
+		
+	}
+
+	public VisitResult visit(StaticCall staticCall, Environment env) {
+		String exprTypeName = staticCall.className;
+		TypeEntry exprType = env.getTypeEntry(exprTypeName);
+		
+		if (exprType.isPrimitive())
+			env.handleSemanticError("Cannot invoke " + staticCall.name + " on primitive type " + exprType.getEntryName(), staticCall.line);
+
+		Method m = env.getMethod(exprType.getEntryClass(), staticCall.name);
+		if (m == null)
+			env.handleSemanticError("The method " + staticCall.name + " is undefined for the type " + exprType.getEntryName(), staticCall.line);
+
+		if (!m.isStatic)
+			env.handleSemanticError("Cannot invoke virtual method " + staticCall.name + " on class", staticCall.line);
+
+		boolean isCallValid = verifyMethodCall(m.formalsList.formals, staticCall.callArgs.expressions, env);
+		if (!isCallValid)
+			env.handleSemanticError("The method " + staticCall.name + " is undefined for the argumetns " + staticCall.callArgs.expressions.toString(), staticCall.line);
+
+		
+		TypeEntry type=env.getTypeEntry(m.type.name);
+		if(m.type.array_dimension!=0)
+			type=ArrayTypeEntry.makeArrayTypeEntry(type,m.type.array_dimension);
+		return new VisitResult(type);
+	}
+
+	public boolean verifyMethodCall(List<Formals> formals, List<Expr> callArgs, Environment env){
+		if (formals.size() != callArgs.size())
+			return false;
+		
+		for (int i = 0; i < formals.size(); i++){
+			VisitResult exprResult=  callArgs.get(i).accept(this, env);
+			TypeEntry exprType = exprResult.type;
+			
+			String formalTypeName = formals.get(0).type.name;
+			TypeEntry formalType = env.getTypeEntry(formalTypeName);
+			
+			if (!exprType.equals(formalType))
+				return false;
+		}
+		
+		return true;
+	}
+	
+	public VisitResult visit(ExprList expressions, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public Integer visit(VirtualCall virtualCall, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
+	public VisitResult visit(ArrayVarExpr expr, Environment env) {
+
+		VisitResult targetExprResult= expr.target_expr.accept(this, env);
+		if(targetExprResult.type.getTypeDimension()==0)
+			env.handleSemanticError("the type of the expression must be an array type but it resolved to "+targetExprResult.type.getEntryName(), expr.line);
+		
+		VisitResult indexExprResult= expr.index_expr.accept(this, env);
+		env.validateTypeMismatch(Environment.INT, indexExprResult.type, expr.line);
+		TypeEntry type;
+		if(targetExprResult.type.getTypeDimension()-1==0)
+			type=env.getTypeEntry(targetExprResult.type.getEntryName());
+		else
+			type=ArrayTypeEntry.makeArrayTypeEntry(targetExprResult.type,targetExprResult.type.getTypeDimension()-1);
+		return new VisitResult(type);
 	}
 
-	public Integer visit(StaticCall staticCall, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
+	public VisitResult visit(ArrayLenExpr expr, Environment env) {
+		VisitResult targetExprResult= expr.expr.accept(this, env);
+		if(targetExprResult.type.getTypeDimension()==0)
+			env.handleSemanticError("the type of the expression must be an array type but it resolved to "+targetExprResult.type.getEntryName(), expr.line);
+		return new VisitResult(env.getTypeEntry(Environment.INT));
+	}
+	
+
+	public VisitResult visit(ArrayAllocExpr expr, Environment env) {
+		VisitResult exprResult= expr.expr.accept(this, env);
+		env.validateTypeMismatch(Environment.INT, exprResult.type, expr.line);
+
+		VisitResult typeResult=expr.type.accept(this, env);		
+
+		return  new VisitResult(ArrayTypeEntry.makeArrayTypeEntry(typeResult.type,typeResult.type.getTypeDimension()+1));
 	}
 
-	public Integer visit(ExprList expressions, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
+	public VisitResult visit(StringExpr expr, Environment env) {
+
+		return new VisitResult(env.getTypeEntry(Environment.STRING),expr.value);
 	}
 
-	public Integer visit(ArrayVarExpr expr, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
+	public VisitResult visit(BooleanExpr expr, Environment env) {
+
+		return new VisitResult(env.getTypeEntry(Environment.BOOLEAN),expr.value);
 	}
 
-	public Integer visit(ArrayLenExpr expr, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public Integer visit(ArrayAllocExpr expr, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public Integer visit(StringExpr expr, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public Integer visit(BooleanExpr expr, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public Integer visit(NullExpr expr, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
+	public VisitResult visit(NullExpr expr, Environment d) { 
+		return new VisitResult();
 	}
 
 
