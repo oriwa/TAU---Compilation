@@ -311,28 +311,22 @@ public class Environment {
 				}
 				
 
-				TypeEntry methodType = this.getTypeEntry(method.type.name);
-				if(methodType==null){
-					handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);				
-				}
-				Validator.validateLibraryInstantiation(methodType,this,method.line);
+			 
+				
 				
 
 				TypeEntry methodType =  Validator.validateType(method.type, this); 
-
+				Validator.validateLibraryInstantiation(methodType,this,method.line);
 				MethodSymbolEntry methodSymbol =new MethodSymbolEntry(method.name, methodType, method.line);
 				TypeEntry tmpArgType;
 				for(Formals formal:method.formalsList.formals){
 
-					tmpArgType=this.getTypeEntry(formal.type.name);
-					if(tmpArgType==null){
-						handleSemanticError("type \"" + method.type.name + "\" is undefined", method.line);
-					}
-					Validator.validateLibraryInstantiation(methodType,this,method.line);
+				
+				
 					
 
 					tmpArgType=  Validator.validateType(formal.type, this);
-
+					Validator.validateLibraryInstantiation(methodType,this,method.line);
 					methodSymbol.addToArgs(tmpArgType);
 				}
 				clssType.addToScopes(methodSymbol, method.isStatic);
