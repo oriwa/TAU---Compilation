@@ -20,7 +20,7 @@ public class Environment {
 	 * name of the variable as a way of ensuring we a consistent mapping
 	 * for each variable. 
 	 */
-	private SymbolTable symbolTable = new SymbolTable();
+	private SymbolTable symbolTable;
 	
 	
 	
@@ -32,7 +32,7 @@ public class Environment {
 	 * */
 	private Map<String,TypeEntry> typeTableMap = new HashMap<String,TypeEntry>();
 	
-	private TypeEntry currentClassType;
+ 
 	private MethodSymbolEntry currentMethodType;
 	private Class currentClass;
 	private Method currentMethod;
@@ -241,6 +241,15 @@ public class Environment {
 		mainMethodNumber++;
 	}
 
+	
+	public SymbolTable getSymbolTable() {
+		return symbolTable;
+	}
+
+	public void setSymbolTable(SymbolTable symbolTable) {
+		this.symbolTable = symbolTable;
+	}
+	
 	public void enterScope() {
 		symbolTable.pushScope();
 	}
@@ -265,12 +274,11 @@ public class Environment {
 	}
 
 	public TypeEntry getCurrentClassType() {
-		return currentClassType;
+		if(currentClass==null)
+			return null;
+		return getTypeEntry(currentClass.name);
 	}
-
-	public void setCurrentClassType(TypeEntry currentClassType) {
-		this.currentClassType = currentClassType;
-	}
+ 
 
 	public MethodSymbolEntry getCurrentMethodType() {
 		return currentMethodType;

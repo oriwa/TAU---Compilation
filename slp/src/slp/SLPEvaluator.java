@@ -62,13 +62,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		if(locationResult.uninitializedId!=null)
 			env.setEntryInitialized(locationResult.uninitializedId);
 		
-		//env.getSymbolEntry()
-		
-		//Expr rhs = stmt.rhs;
-		//Integer expressionValue = rhs.accept(this, env);
-		//AssignStmt var = stmt.location;
-		//env.update(var, expressionValue);
-		return null;
+		return new VisitResult();
 	}
 
 	public VisitResult visit(Expr expr, Environment env) {
@@ -83,7 +77,12 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		{
 			VisitResult targetResult=expr.target_expr.accept(this, env);
 			Validator.validateInitialized(targetResult, expr.line, env);
-			//TODO:Check field validity
+			SymbolTable symbolTable=targetResult.type.getScope(false);
+			SymbolEntry symbolEntry=symbolTable.getEntryByName(expr.name);
+			if(symbolEntry==null || symbolEntry instanceof MethodSymbolEntry)
+				env.handleSemanticError(expr.name +" cannot be resolved or is not a field"  ,expr.line);
+			
+			visitResult.type=symbolEntry.getEntryTypeID();
 		}
 		else
 		{ 
@@ -252,9 +251,9 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	}
 
 	public VisitResult visit(Method method, Environment env) {
+		TypeEntry currentClassType= env.getCurrentClassType();
 		
-		//TODO Add method id validation
-		
+		env.setSymbolTable(currentClassType.getScope(method.isStatic));
 		
 		if(IsMainMethod(method))
 			env.addMainMethodNumber();
@@ -265,6 +264,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		if(!stmtListResult.hasReturnStatement && method.type!=null)
 			env.handleSemanticError("this method must return a result of type "+method.type.name, method.line);
 		env.setCurrentMethod(null);
+		env.setSymbolTable(null);
 		return null;
 	} 
 	 
