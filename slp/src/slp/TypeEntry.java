@@ -10,7 +10,7 @@ public class TypeEntry {
 	
 	private final int entryId;
 	private final String entryName;
-	private final boolean isPrimitive;
+	private  boolean isPrimitive;
 	private final Class entryClass;
 	
 	private TypeEntry extending=null;

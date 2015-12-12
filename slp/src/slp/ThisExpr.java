@@ -2,6 +2,13 @@ package slp;
 
 public class ThisExpr extends Expr {
 
+
+	public final int line;
+	
+	public ThisExpr(int line)
+	{
+		this.line=line;
+	}
 	
 	@Override
 	public void accept(Visitor visitor) {
@@ -12,8 +19,8 @@ public class ThisExpr extends Expr {
 	@Override
 	public <DownType, UpType> UpType accept(
 			PropagatingVisitor<DownType, UpType> visitor, DownType context) {
-		// TODO Auto-generated method stub
-		return null;
+
+		return visitor.visit(this, context);
 	}
 	public String toString() {
 		return "this object";

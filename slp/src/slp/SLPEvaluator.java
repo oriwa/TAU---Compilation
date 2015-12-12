@@ -57,6 +57,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 		VisitResult locationResult=stmt.location.accept(this, env);
 		VisitResult rhsResult=stmt.rhs.accept(this, env);
+		Validator.validateInitialized(rhsResult, stmt.line, env);
 		env.validateTypeMismatch(locationResult.type, rhsResult.type, stmt.line);
 		if(locationResult.uninitializedId!=null)
 			env.setEntryInitialized(locationResult.uninitializedId);
@@ -80,7 +81,8 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		VisitResult visitResult=new VisitResult();
 		if(expr.target_expr!=null)
 		{
-			expr.target_expr.accept(this, env);
+			VisitResult targetResult=expr.target_expr.accept(this, env);
+			Validator.validateInitialized(targetResult, expr.line, env);
 			//TODO:Check field validity
 		}
 		else
@@ -104,14 +106,17 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	public VisitResult visit(UnaryOpExpr expr, Environment env) {
 
 
-		VisitResult value = expr.operand.accept(this, env);	  
+		VisitResult value = expr.operand.accept(this, env);	
+		Validator.validateInitialized(value, expr.line, env);
 		Validator.validateIlegalOp(value.type, expr.op, expr.line,env);
 		return new VisitResult(value.type);
 	}
 
 	public VisitResult visit(BinaryOpExpr expr, Environment env) {
 		VisitResult lhsValue = expr.lhs.accept(this, env);
+		Validator.validateInitialized(lhsValue, expr.line, env);
 		VisitResult rhsValue = expr.rhs.accept(this, env);
+		Validator.validateInitialized(rhsValue, expr.line, env);
 		
 		Validator.validateIlegalOp(lhsValue.type,lhsValue.type,expr.op, expr.line,env);
 
@@ -315,6 +320,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		else
 		{
 			VisitResult exprResult= returnStmt.expr.accept(this,env);
+			Validator.validateInitialized(exprResult, returnStmt.line, env);
 			env.validateTypeMismatch(currentMethod.type.name, exprResult.type, returnStmt.line);
 		}
 		return new VisitResult(true);
@@ -325,6 +331,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 	public VisitResult visit(IfStmt ifStmt, Environment env) {
 		VisitResult exprResult= ifStmt.expr.accept(this,env);
+		Validator.validateInitialized(exprResult, ifStmt.line, env);
 		env.validateTypeMismatch(Environment.BOOLEAN,exprResult.type,ifStmt.line);
 		
 		boolean createScope = !(ifStmt.ifStmt instanceof StmtList);
@@ -364,6 +371,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 	public VisitResult visit(WhileStmt whileStmt, Environment env) {
 		VisitResult whileExprResult =whileStmt.expr.accept(this,env);
+		Validator.validateInitialized(whileExprResult, whileStmt.line, env);
 		env.validateTypeMismatch(Environment.BOOLEAN,whileExprResult.type,whileStmt.line);
 		boolean isWhileTrue=false;
 		if(whileExprResult.value!=null)
@@ -379,6 +387,12 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		Scope preScope=whileStmtResult.prevScope;
 		boolean hasReturn=isWhileTrue&&whileStmtResult.hasReturnStatement;
 		env.setIsInLoop(false);
+		if (createScope)
+			preScope=env.leaveScope();		
+		
+		if(isWhileTrue)
+			setInitializedToOldEntries(preScope, env);
+							
 		return new VisitResult(hasReturn);
 	}
 
@@ -414,6 +428,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		if(declarationStmt.value!=null)
 		{
 			VisitResult valueResult = declarationStmt.value.accept(this,env);
+			Validator.validateInitialized(valueResult, declarationStmt.line, env);
 			env.validateTypeMismatch(declarationStmt.type.name, valueResult.type, declarationStmt.line);
 			
 			entry.setIsInitialized(true);			
@@ -497,10 +512,12 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	public VisitResult visit(ArrayVarExpr expr, Environment env) {
 
 		VisitResult targetExprResult= expr.target_expr.accept(this, env);
+		Validator.validateInitialized(targetExprResult, expr.line, env);
 		if(targetExprResult.type.getTypeDimension()==0)
 			env.handleSemanticError("the type of the expression must be an array type but it resolved to "+targetExprResult.type.getEntryName(), expr.line);
 		
 		VisitResult indexExprResult= expr.index_expr.accept(this, env);
+		Validator.validateInitialized(indexExprResult, expr.line, env);
 		env.validateTypeMismatch(Environment.INT, indexExprResult.type, expr.line);
 		TypeEntry type;
 		if(targetExprResult.type.getTypeDimension()-1==0)
@@ -512,6 +529,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 	public VisitResult visit(ArrayLenExpr expr, Environment env) {
 		VisitResult targetExprResult= expr.expr.accept(this, env);
+		Validator.validateInitialized(targetExprResult, expr.line, env);
 		if(targetExprResult.type.getTypeDimension()==0)
 			env.handleSemanticError("the type of the expression must be an array type but it resolved to "+targetExprResult.type.getEntryName(), expr.line);
 		return new VisitResult(env.getTypeEntry(Environment.INT));
@@ -520,6 +538,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 	public VisitResult visit(ArrayAllocExpr expr, Environment env) {
 		VisitResult exprResult= expr.expr.accept(this, env);
+		Validator.validateInitialized(exprResult, expr.line, env);
 		env.validateTypeMismatch(Environment.INT, exprResult.type, expr.line);
 		
 		VisitResult typeResult=expr.type.accept(this, env);		
@@ -548,6 +567,16 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			env.handleSemanticError("cannot create an instance of type  "+expr.className, expr.line);
 		return new VisitResult(classType);
 	}
+
+	public VisitResult visit(ThisExpr thisExpr, Environment env) {
+
+		Method currentMethod=env.getCurrentMethod();
+		if(!currentMethod.isStatic)
+			env.handleSemanticError("cannot use this in a static context", thisExpr.line);
+		return new VisitResult(env.getTypeEntry(currentMethod.name));
+	}
+	
+ 
 
 
 }
