@@ -174,6 +174,7 @@ public class Environment {
 			TypeEntry extendsTypeEntry= getTypeEntry(clss.extends_name);
 			if(extendsTypeEntry!=null)
 			{
+				Validator.validateLibraryInstantiation(typeEntry, this, clss.line);
 				Class extendsClass=extendsTypeEntry.getEntryClass();
 				if(!extendsClass.isSealed){
 					typeEntry.expandScope(extendsTypeEntry);
