@@ -213,8 +213,8 @@ location ::= ID:id
 		|expr:arr LB:lb expr:index RB
 		{:RESULT = new ArrayVarExpr(lbleft,arr,index);:}
 ;
-expr ::= THIS
-		{:RESULT = new ThisExpr();:}
+expr ::= THIS:th
+		{:RESULT = new ThisExpr(thleft);:}
 		| LP expr:e RP
 		{:RESULT=e;:}
 		| NEW type:t LB expr:e RB

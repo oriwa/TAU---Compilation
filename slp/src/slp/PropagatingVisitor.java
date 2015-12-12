@@ -7,7 +7,7 @@ package slp;
 public interface PropagatingVisitor<DownType,UpType> {
 	
 	public UpType visit(Program program, DownType d);
-	public UpType visit(ClassList classes, DownType d);
+	public UpType visit(ClassList classList, DownType d);
 	public UpType visit(Class clss, DownType d);
 	public UpType visit(DclrList list, DownType d);
 	public UpType visit(Field field, DownType d);
@@ -36,7 +36,8 @@ public interface PropagatingVisitor<DownType,UpType> {
 	//expr
 	public UpType visit(ExprList expressions, DownType d);
 	public UpType visit(Expr expr, DownType d);
-	
+
+	public UpType visit(ThisExpr thisExpr, DownType d);
 	public UpType visit(InstantExpr expr, DownType d);	
 	public UpType visit(VarExpr expr, DownType d);
 	public UpType visit(ArrayVarExpr expr, DownType d);

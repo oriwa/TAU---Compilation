@@ -600,5 +600,15 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		return new VisitResult(classType);
 	}
 
+	public VisitResult visit(ThisExpr thisExpr, Environment env) {
+
+		Method currentMethod=env.getCurrentMethod();
+		if(!currentMethod.isStatic)
+			env.handleSemanticError("cannot use this in a static context", thisExpr.line);
+		return new VisitResult(env.getTypeEntry(currentMethod.name));
+	}
+	
+ 
+
 
 }
