@@ -2,7 +2,6 @@ package slp;
 
 import java.util.*;
 
-import slp.SymbolEntry.ReferenceRole;
 
 /** Represents a state during the evaluation of a program. 
  */
@@ -32,9 +31,10 @@ public class Environment {
 	 * */
 	private Map<String,TypeEntry> typeTableMap = new HashMap<String,TypeEntry>();
 	
+	private TypeEntry currentClassType;
+	private MethodSymbolEntry currentMethodType;
 	private Class currentClass;
 	private Method currentMethod;
-	private boolean blockContainsReturn;
 	private int loopDepth;
 	private int mainMethodNumber=0;
 	
@@ -47,13 +47,12 @@ public class Environment {
 	{
 		System.out.println("ERROR in line "+line+": "+error);
 		System.exit(1);
-		//throw new /*Semantic*/Exception("ERROR in line +"+line+": "+error);
 	}
 	
 	public void validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType,int line)
 	{
 		//TODO: Add inheritance support
-		if(actualType.getEntryId()!=expectedType.getEntryId())
+		if(!isDimensionEqual(expectedType,actualType) || !isA(expectedType,actualType))
 			handleSemanticError("type mismatch: cannot convert from "+actualType.getEntryName()+" to "+expectedType.getEntryName(),line);
 			
 	}
@@ -68,82 +67,117 @@ public class Environment {
 		validateTypeMismatch(getTypeEntry(expectedTypeName),getTypeEntry(actualTypeId), line);
 	}
 	
-
 	
-	public void addToEnv(Class clss) throws /*Semantic*/Exception{
+	private boolean isDimensionEqual(TypeEntry type1, TypeEntry type2) {
+		if(type1.getClass()==type2.getClass()){
+			if(type1.getClass()==ArrayTypeEntry.class){
+				ArrayTypeEntry arr1 =(ArrayTypeEntry)type1;
+				ArrayTypeEntry arr2 =(ArrayTypeEntry)type2;
+				return arr1.getTypeDimension()==arr2.getTypeDimension();
+			}
+		}
+		ArrayTypeEntry arr;
+		if(type1.getClass()==ArrayTypeEntry.class){
+			arr =(ArrayTypeEntry)type1;
 			
+		}else{
+			arr = (ArrayTypeEntry)type2;
+		}
+		return arr.getTypeDimension()==0;
+	}
+
+	public boolean isA(TypeEntry potentialAncestor,
+			TypeEntry potentialdescendant) {
+		if (potentialdescendant.getEntryId() == potentialAncestor.getEntryId()) {
+			return true;
+		}
+		if (potentialdescendant.isPrimitive()) {
+			return false;
+		}
+		String parentName = potentialdescendant.getEntryClass().extends_name;
+		if (parentName != null) { // else no-parent
+			return isA(typeTableMap.get(parentName), potentialAncestor);
+		}
+		return false;
+	}
+
+	public void addToEnv(Class clss) {
 		addTypeEntry(clss);
 	}
-	
-	public void addToEnv(DeclarationStmt dclr) {
-		addToEnv(dclr.name,dclr.type.name,dclr.line,ReferenceRole.LOCAL);
+
+	public void addToEnv(DeclarationStmt dclr){
+		addToEnv(dclr.name, dclr.type.name, dclr.line, false);
 	}
-	
-	public void addToEnv(Field field){
-		for(String id: field.extraIDs.ids){
-			addToEnv(field.name,id,field.line,ReferenceRole.FIELD);
+
+	public void addToEnv(Field field)  {
+		for (String id : field.extraIDs.ids) {
+			addToEnv(field.name, id, field.line, false);
 		}
 	}
-	
+
 	public void addToEnv(Method method) {
-		addToEnv(method.name,method.type.name,method.line,ReferenceRole.METHOD);
+		SymbolEntry methodSymbolEntry=addToEnv(method.name, method.type.name, method.line,true);
+		this.setCurrentMethodType((MethodSymbolEntry) methodSymbolEntry);
+		getCurrentClassType().addComponent(method.name, getTypeEntry(method.type.name));
 	}
-	
+
 	public void addToEnv(FormalsList formals) {
-		for(Formals f:formals.formals){
-			addToEnv(f.name,f.type.name,f.line,ReferenceRole.ARGUMENT);
-		}		
+		for (Formals f : formals.formals) {
+			addToEnv(f.name, f.type.name, f.line, true);
+		}
 	}
-	
-	private void addToEnv(String typeName, String SymbolId, int lineDefined,ReferenceRole role) {
-		TypeEntry type=getTypeEntry(typeName);
-		if(type==null){
-			handleSemanticError("type \""+typeName+"\" is undefined",lineDefined);
+
+	private SymbolEntry addToEnv(String typeName, String SymbolId, int lineDefined,boolean isMethod)  {
+		TypeEntry type = getTypeEntry(typeName);
+		if (type == null) {
+			Validator.handleSemanticError("type \"" + typeName + "\" is undefined",
+					lineDefined);
 		}
-		
-		if(symbolTable.isInCurrentScope(SymbolId)){
-			String errorMsg="ERROR: multiple definitions of "+SymbolId;
-			String note="note: first defined in line: "+symbolTable.getEntryByName(SymbolId).definedAt();
-			handleSemanticError(errorMsg+"\n"+note,lineDefined);
+
+		if (symbolTable.isInCurrentScope(SymbolId)) {
+			String errorMsg = "ERROR: multiple definitions of " + SymbolId;
+			String note = "note: first defined in line: "
+					+ symbolTable.getEntryByName(SymbolId).definedAt();
+			Validator.handleSemanticError(errorMsg + "\n" + note, lineDefined);
 		}
-		
-		SymbolEntry newSymbol= new SymbolEntry(SymbolId, type, lineDefined, role);
+		SymbolEntry newSymbol ;
+		if(isMethod){
+			newSymbol = new MethodSymbolEntry(SymbolId, type, lineDefined);
+			
+		}
+		newSymbol = new SymbolEntry(SymbolId, type, lineDefined);
 		symbolTable.addToScope(newSymbol);
-	}	
-	
-	private void initPrimitiveTypeEntrys()
-	{
+		return newSymbol;
+	}
+
+
+
+	private void initPrimitiveTypeEntrys() {
 		for (String type : PRIMITIVE_TYPES) {
-			addTypeEntry(new TypeEntry(typeTable.size()-1,type));
+			addTypeEntry(new TypeEntry(typeTable.size(), type));
 		}
-		
 	}
-	
-	private void addTypeEntry(TypeEntry typeEntry)
-	{
+
+	private void addTypeEntry(TypeEntry typeEntry) {
 		typeTable.add(typeEntry);
-		typeTableMap.put(typeEntry.getEntryName(), typeEntry);	
+		typeTableMap.put(typeEntry.getEntryName(), typeEntry);
 	}
-	
-	public TypeEntry addTypeEntry(Class clss)
-	{ 
-		TypeEntry typeEntry=new TypeEntry(typeTable.size()-1,clss.name,clss);
+
+	public TypeEntry addTypeEntry(Class clss) {
+		TypeEntry typeEntry = new TypeEntry(typeTable.size(), clss.name, clss);
 		addTypeEntry(typeEntry);
-		return typeEntry;		 
+		return typeEntry;
 	}
-	
-	
-	public TypeEntry getTypeEntry(int id)
-	{
-		if(typeTable.size()>id)
+
+	public TypeEntry getTypeEntry(int id) {
+		if (typeTable.size() > id)
 			return typeTable.get(id);
 		return null;
 	}
-	
-	public TypeEntry getTypeEntry(String name)
-	{
-		if(typeTableMap.containsKey(name))
-			return typeTableMap.get(name);
+
+	public TypeEntry getTypeEntry(String name) {
+		if (typeTableMap.containsKey(name))
+		return typeTableMap.get(name);
 		return null;
 	}
 
@@ -164,13 +198,13 @@ public class Environment {
 	}
 
 	public boolean getIsInLoop() {
-		return loopDepth>0;
+		return loopDepth > 0;
 	}
 
 	public void setIsInLoop(boolean isInLoop) {
-		if (isInLoop) 
+		if (isInLoop)
 			loopDepth++;
-		else 
+		else
 			loopDepth--;
 
 	}
@@ -182,45 +216,38 @@ public class Environment {
 	public void addMainMethodNumber() {
 		mainMethodNumber++;
 	}
-	
-	public void enterScope(){
+
+	public void enterScope() {
 		symbolTable.pushScope();
 	}
-	public void leaveScope(){
+
+	public void leaveScope() {
 		symbolTable.popScope();
 	}
-	
-	public Method getMethod(Class clss, String methodName){
-		for (Method m : clss.dclrList.methods){
-			if (methodName.equals(m.name)){
-				return m;
-			}
-		}
+
+	public TypeEntry getExprType(TypeEntry exprType, String fieldName) {
 		
-		Class extendsClass = clss.extends_class;
-		if (extendsClass == null)
-			return null;
-		return getMethod(extendsClass, methodName);
+		// TODO Auto-generated method stub
+		return null;
 	}
-	
-	public Field getField(Class clss, String fieldName){
-		for (Field f : clss.dclrList.fields){
-			if (fieldName.equals(f.name)){
-				return f;
-			}
-		}
-		
-		Class extendsClass = clss.extends_class;
-		if (extendsClass == null)
-			return null;
-		return getField(extendsClass, fieldName);
+	TypeEntry getExprType(String varName) {	
+		return symbolTable.getEntryByName(varName).getEntryTypeID();
 	}
 
-	public boolean isBlockContainsReturn() {
-		return blockContainsReturn;
+	public TypeEntry getCurrentClassType() {
+		return currentClassType;
 	}
 
-	public void setBlockContainsReturn(boolean blockContainsReturn) {
-		this.blockContainsReturn = blockContainsReturn;
+	public void setCurrentClassType(TypeEntry currentClassType) {
+		this.currentClassType = currentClassType;
 	}
+
+	public MethodSymbolEntry getCurrentMethodType() {
+		return currentMethodType;
+	}
+
+	public void setCurrentMethodType(MethodSymbolEntry currentMethodType) {
+		this.currentMethodType = currentMethodType;
+	}
+
 }

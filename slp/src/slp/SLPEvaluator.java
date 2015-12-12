@@ -75,51 +75,36 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	}
 
 	public VisitResult visit(UnaryOpExpr expr, Environment env) {
-		VisitResult value = expr.operand.accept(this, env);
-		//TODO: check type
-		Object result = null;
-		if(value.value!=null)
-		{
-			switch (expr.op) {
-				case MINUS:
-					result = new Integer(- (Integer)value.value);
-					break;
-				case LNEG:
-					
-					result = !(Boolean)value.value;
-					break;
-				default:
-					env.handleSemanticError("Encountered unexpected operator " + expr.op, expr.line);
-			}
-		}
-		return new VisitResult(value.type, result);
+
+
+		VisitResult value = expr.operand.accept(this, env);	  
+		Validator.validateIlegalOp(value.type, expr.op, expr.line,env);
+		return new VisitResult(value.type);
 	}
 
 	public VisitResult visit(BinaryOpExpr expr, Environment env) {
 		VisitResult lhsValue = expr.lhs.accept(this, env);
 		VisitResult rhsValue = expr.rhs.accept(this, env);
-		int a=0;
-		//TODO: check type
+		
+		Validator.validateIlegalOp(lhsValue.type,lhsValue.type,expr.op, expr.line,env);
 
-		switch (expr.op) {
-		case DIVIDE:
+
+		switch (expr.op){
+		case PLUS:
+			if(lhsValue.type.getEntryId()==env.getTypeEntry(Environment.STRING).getEntryId())
+				return new VisitResult(env.getTypeEntry(Environment.STRING));
+			else
+				return new VisitResult(env.getTypeEntry(Environment.INT));
+				
 		case MINUS:
 		case MULTIPLY:
-		case PLUS:
-		case LT:
-		case GT:
-		case LTE:
-		case GTE:
-			break;
-			
-		case LAND:  
-		case LOR:
-
-			break;
+		case DIVIDE:
+		case MOD:
+			return new VisitResult(env.getTypeEntry(Environment.INT));
 		default:
-			env.handleSemanticError("Encountered unexpected operator type: " + expr.op, expr.line);
+			//All other operations yield boolean result
+			return new VisitResult(env.getTypeEntry(Environment.BOOLEAN));
 		}
-		
 		
 		
 //		int result = 0;
@@ -159,7 +144,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 //		default:
 //			env.handleSemanticError("Encountered unexpected operator type: " + expr.op, expr.line);
 //		}
-		return new VisitResult();
+
 	}
 
 	public VisitResult visit(Program program, Environment env)  {
@@ -339,7 +324,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			VisitResult exprResult= returnStmt.expr.accept(this,env);
 			env.validateTypeMismatch(currentMethod.type.name, exprResult.type, returnStmt.line);
 		}
-		env.setBlockContainsReturn(true);
 		return new VisitResult(true);
 	}
 
@@ -415,9 +399,10 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		if (!isCallValid)
 			env.handleSemanticError("The method " + virtualCall.name + " is undefined for the argumetns " + virtualCall.callArgs.expressions.toString(), virtualCall.line);
 
-		VisitResult visitResult =new VisitResult(env.getTypeEntry( m.type.name));
-		visitResult.arrayDimension=m.type.array_dimension;
-		return visitResult;
+		TypeEntry type=env.getTypeEntry(m.type.name);
+		if(m.type.array_dimension!=0)
+			type=ArrayTypeEntry.makeArrayTypeEntry(type,m.type.array_dimension);
+		return new VisitResult(type);
 		
 	}
 
@@ -439,9 +424,11 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		if (!isCallValid)
 			env.handleSemanticError("The method " + staticCall.name + " is undefined for the argumetns " + staticCall.callArgs.expressions.toString(), staticCall.line);
 
-		VisitResult visitResult =new VisitResult(env.getTypeEntry( m.type.name));
-		visitResult.arrayDimension=m.type.array_dimension;
-		return visitResult;
+		
+		TypeEntry type=env.getTypeEntry(m.type.name);
+		if(m.type.array_dimension!=0)
+			type=ArrayTypeEntry.makeArrayTypeEntry(type,m.type.array_dimension);
+		return new VisitResult(type);
 	}
 
 	public boolean verifyMethodCall(List<Formals> formals, List<Expr> callArgs, Environment env){
@@ -470,20 +457,22 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	public VisitResult visit(ArrayVarExpr expr, Environment env) {
 
 		VisitResult targetExprResult= expr.target_expr.accept(this, env);
-		if(targetExprResult.arrayDimension==0)
+		if(targetExprResult.type.getTypeDimension()==0)
 			env.handleSemanticError("the type of the expression must be an array type but it resolved to "+targetExprResult.type.getEntryName(), expr.line);
 		
 		VisitResult indexExprResult= expr.index_expr.accept(this, env);
 		env.validateTypeMismatch(Environment.INT, indexExprResult.type, expr.line);
-		
-		VisitResult visitResult =new VisitResult(targetExprResult.type);
-		visitResult.arrayDimension=targetExprResult.arrayDimension-1;
-		return visitResult;
+		TypeEntry type;
+		if(targetExprResult.type.getTypeDimension()-1==0)
+			type=env.getTypeEntry(targetExprResult.type.getEntryName());
+		else
+			type=ArrayTypeEntry.makeArrayTypeEntry(targetExprResult.type,targetExprResult.type.getTypeDimension()-1);
+		return new VisitResult(type);
 	}
 
 	public VisitResult visit(ArrayLenExpr expr, Environment env) {
 		VisitResult targetExprResult= expr.expr.accept(this, env);
-		if(targetExprResult.arrayDimension==0)
+		if(targetExprResult.type.getTypeDimension()==0)
 			env.handleSemanticError("the type of the expression must be an array type but it resolved to "+targetExprResult.type.getEntryName(), expr.line);
 		return new VisitResult(env.getTypeEntry(Environment.INT));
 	}
@@ -494,10 +483,8 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		env.validateTypeMismatch(Environment.INT, exprResult.type, expr.line);
 
 		VisitResult typeResult=expr.type.accept(this, env);		
-		
-		VisitResult visitResult =new VisitResult(typeResult.type);
-		visitResult.arrayDimension=expr.type.array_dimension+1;
-		return visitResult;
+
+		return  new VisitResult(ArrayTypeEntry.makeArrayTypeEntry(typeResult.type,typeResult.type.getTypeDimension()+1));
 	}
 
 	public VisitResult visit(StringExpr expr, Environment env) {

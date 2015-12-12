@@ -29,12 +29,14 @@ public class SymbolTable {
 	/**
 	 * Dismiss the last Scope that has been defined (do when exiting the scope)	
 	 * */
-	public void popScope(){
+	public List<SymbolEntry> popScope(){
 		List<Stack<SymbolEntry>> lastScope= scopes.pop();
+		List<SymbolEntry> items=new ArrayList<SymbolEntry>();
 		for(Stack<SymbolEntry> entryList: lastScope){
-			entryList.pop();
+			items.add(entryList.pop());
 			if(entryList.isEmpty())entryList=null;
 		}
+		return items;
 	}
 	
 	/**
