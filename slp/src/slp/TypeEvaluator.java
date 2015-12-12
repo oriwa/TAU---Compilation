@@ -1,197 +1,242 @@
 package slp;
 
-public class TypeEvaluator implements slp.PropagatingVisitor<Environment, TypeEntry>{
-
+public class TypeEvaluator implements slp.PropagatingVisitor<Environment, Integer>{
+	
+	
 	@Override
-	public TypeEntry visit(Program program, Environment d) {
+	public Integer visit(Program program, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(ClassList classes, Environment d) {
+	public Integer visit(ClassList classes, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(Class clss, Environment d) {
+	public Integer visit(Class clss, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(DclrList list, Environment d) {
+	public Integer visit(DclrList list, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(Field field, Environment d) {
+	public Integer visit(Field field, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(ExtraIDs extraIDs, Environment d) {
+	public Integer visit(ExtraIDs extraIDs, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(Method method, Environment d) {
+	public Integer visit(Method method, Environment d) {
+		// TODO Auto-generated method stub
+		//	TODO set d.currentMethod to this method's MethodSymbolEntry
+		//	TODO add all formals as TypeEntries to its args-list using .addToArgs
+		return null;
+	}
+
+	@Override
+	public Integer visit(FormalsList formalsList, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(FormalsList formalsList, Environment d) {
+	public Integer visit(Formals formals, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(Formals formals, Environment d) {
+	public Integer visit(Type type, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(Type type, Environment d) {
+	public Integer visit(StmtList stmts, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(StmtList stmts, Environment d) {
+	public Integer visit(AssignStmt stmt, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(AssignStmt stmt, Environment d) {
+	public Integer visit(CallStmt callStmt, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(CallStmt callStmt, Environment d) {
+	public Integer visit(ReturnStmt returnStmt, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(ReturnStmt returnStmt, Environment d) {
+	public Integer visit(IfStmt ifStmt, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(IfStmt ifStmt, Environment d) {
+	public Integer visit(WhileStmt whileStmt, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(WhileStmt whileStmt, Environment d) {
+	public Integer visit(BreakStmt breakStmt, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(BreakStmt breakStmt, Environment d) {
+	public Integer visit(ContinueStmt continueStmt, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(ContinueStmt continueStmt, Environment d) {
+	public Integer visit(DeclarationStmt declarationStmt, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(DeclarationStmt declarationStmt, Environment d) {
+	public Integer visit(VirtualCall virtualCall, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(VirtualCall virtualCall, Environment d) {
+	public Integer visit(StaticCall staticCall, Environment d) {
+		//staticCall.className
+		//staticCall.callArgs
+		//staticCall.name
+		//staticCall.line
+		return null;
+	}
+
+	@Override
+	public Integer visit(ExprList expressions, Environment d) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(StaticCall staticCall, Environment d) {
-		// TODO Auto-generated method stub
+	public Integer visit(VarExpr expr, Environment d) {
+		//TODO
 		return null;
-	}
-
-	@Override
-	public TypeEntry visit(ExprList expressions, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-
-
-	@Override
-	public TypeEntry visit(VarExpr expr, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public TypeEntry visit(ArrayVarExpr expr, Environment d) {
+		/*
+		 * if(expr.target_expr==null){
+			TypeEntry exprType=expr.target_expr.accept(this, d);
+			
+			return d.getExprType(exprType,expr.name);
+		}
 		
-		return null;
+		return d.getExprType(expr.name);*/
 	}
 
+	public Integer visit(ThisExpr expr, Environment d) {
+		return d.getCurrentClass().getEntryId();
+	}
+	
 	@Override
-	public TypeEntry visit(ArrayLenExpr expr, Environment d) {
+	public Integer visit(ArrayVarExpr expr, Environment d) {
+		TypeEntry exprType=d.getTypeEntry(expr.target_expr.accept(this, d));
+		Validator.validateIsArray(exprType, expr.line);
 		
-		return d.getTypeEntry(Environment.INT);
+		TypeEntry idxType=d.getTypeEntry(expr.index_expr.accept(this, d));
+		Validator.validateTypeMismatch(d.getTypeEntry(Environment.INT), idxType, expr.line,d);
+		
+		return ArrayTypeEntry.makeArrayTypeEntry(exprType,exprType.getTypeDimension()-1).getEntryId();
 	}
 
 	@Override
-	public TypeEntry visit(ArrayAllocExpr expr, Environment d) {
+	public Integer visit(ArrayLenExpr expr, Environment d) {
+		TypeEntry exprType = d.getTypeEntry(expr.expr.accept(this, d));
+		Validator.validateIsArray(exprType,expr.line);
+		return d.getTypeEntry(Environment.INT).getEntryId();
+	}
+
+	@Override
+	public Integer visit(ArrayAllocExpr expr, Environment d) {
 		TypeEntry arrayType= d.getTypeEntry(expr.type.name);
-		TypeEntry arraySizeType = expr.expr.accept(this, d);
-		d.validateTypeMismatch(d.getTypeEntry(Environment.INT), arraySizeType, expr.line);
+		TypeEntry arraySizeType = d.getTypeEntry(expr.expr.accept(this, d));
+		Validator.validateTypeMismatch(d.getTypeEntry(Environment.INT), arraySizeType, expr.line,d);
 		
-		return ArrayTypeEntry.makeArrayTypeEntry(arrayType,expr.type.array_dimension);
+		return ArrayTypeEntry.makeArrayTypeEntry(arrayType,expr.type.array_dimension).getEntryId();
 	}
 
 	@Override
-	public TypeEntry visit(NumberExpr expr, Environment d) {
-		return d.getTypeEntry(Environment.INT);
+	public Integer visit(NumberExpr expr, Environment d) {
+		return d.getTypeEntry(Environment.INT).getEntryId();
 	}
 
 	@Override
-	public TypeEntry visit(StringExpr expr, Environment d) {
-		return d.getTypeEntry(Environment.STRING);
+	public Integer visit(StringExpr expr, Environment d) {
+		return d.getTypeEntry(Environment.STRING).getEntryId();
 	}
 
 	@Override
-	public TypeEntry visit(BooleanExpr expr, Environment d) {
-		return d.getTypeEntry(Environment.BOOLEAN);
+	public Integer visit(BooleanExpr expr, Environment d) {
+		return d.getTypeEntry(Environment.BOOLEAN).getEntryId();
 	}
 
 	@Override
-	public TypeEntry visit(NullExpr expr, Environment d) {
+	public Integer visit(NullExpr expr, Environment d) {
 		return null;
 	}
 
 	@Override
-	public TypeEntry visit(UnaryOpExpr expr, Environment d) {
-		// TODO Auto-generated method stub
-		return null;
+	public Integer visit(UnaryOpExpr expr, Environment d) {
+		int line= expr.line;
+		TypeEntry exprType=d.getTypeEntry(expr.accept(this, d));   
+		Validator.validateIlegalOp(exprType, expr.op, line,d);
+		return exprType.getEntryId();
 	}
 
 	@Override
-	public TypeEntry visit(BinaryOpExpr expr, Environment d) {
-		return null;
+	public Integer visit(BinaryOpExpr expr, Environment d) {
+		int line =expr.line;
+				
+		TypeEntry lType=d.getTypeEntry(expr.lhs.accept(this, d));
+		TypeEntry rType=d.getTypeEntry(expr.rhs.accept(this, d));
+
+		Validator.validateIlegalOp(lType,rType,expr.op, line,d);
+		
+		switch (expr.op){
+		case PLUS:
+			if(lType.getEntryId()==d.getTypeEntry(Environment.STRING).getEntryId()){
+				return d.getTypeEntry(Environment.STRING).getEntryId();
+			}
+		case MINUS:
+		case MULTIPLY:
+		case DIVIDE:
+		case MOD:
+			return d.getTypeEntry(Environment.INT).getEntryId();
+		default:
+			//All other operations yield boolean result
+			return d.getTypeEntry(Environment.BOOLEAN).getEntryId();
+		}
+		
 	}
 
 }

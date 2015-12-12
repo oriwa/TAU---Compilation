@@ -31,9 +31,5 @@ public class ArrayTypeEntry extends TypeEntry {
 		return dimension;
 	}
 	
-	public String getEntryName() {
-		String arrBrackets =new String(new char[dimension]).replace("\0","[]"); 
-		return super.getEntryName()+arrBrackets;
-	}
 
 }
