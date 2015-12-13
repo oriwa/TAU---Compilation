@@ -11,7 +11,11 @@
 //   int random(int n) {}
 //    void exit(int n) {}
 //}
-
+class A extends Quicksort{
+	boolean partition(boolean bla){
+		quicksort(0,0);
+	}
+}
 class Quicksort {
     int[] a;
 
