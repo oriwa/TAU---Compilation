@@ -206,7 +206,7 @@ public class Environment {
 			}
 			else
 			{					
-				handleSemanticError("class \""+clss.extends_class.name +"\" is undefined, classes can only extend previously defined classes",clss.line);
+				handleSemanticError("class \""+clss.extends_name +"\" is undefined, classes can only extend previously defined classes",clss.line);
 			}
 		}
 		
