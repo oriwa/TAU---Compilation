@@ -86,10 +86,13 @@ public class SymbolTable {
 	
 	public boolean isInCurrentScope(String refName){
 		if(map.containsKey(refName)){
-			return map.get(refName).size()==scopes.size();
+			Stack<SymbolEntry> scopeStack = map.get(refName);
+			if(scopeStack.peek().isArg()) return true;
+			return scopeStack.size()==scopes.size();
 		}
 		return false;
 	}
+	
 	
 	
 	public void setEntryInitialized(String refName) {

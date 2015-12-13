@@ -127,10 +127,9 @@ public class Environment {
 	}
 
 	public void addToEnv(Formals formals) {
-	
 			SymbolEntry symbolEntry =addDeclaration(Validator.validateType( formals.type, this),formals.name, formals.line);
 			symbolEntry.setIsInitialized(true);
-		
+			symbolEntry.setIsArg();
 	}
  
 //	public void addToEnv(FormalsList formals) {
