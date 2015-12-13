@@ -45,6 +45,10 @@ public class TypeEntry {
 		String arrBrackets =new String(new char[this.getTypeDimension()]).replace("\0","[]");
 		return entryName+arrBrackets;
 	}
+	
+	public String getTypeName() {
+		return entryName;
+	}
 
 	public void setPrimitive(boolean primitive){
 		isPrimitive = primitive;
@@ -79,6 +83,7 @@ public class TypeEntry {
 	public SymbolTable getScope(boolean isStatic){
 		
 		SymbolTable result = new SymbolTable();
+		result.pushScope();
 		if(!isPrimitive){
 			Map<String,SymbolEntry> creator= isStatic?staticScope:instanceScope;
 			Collection<SymbolEntry> entries=creator.values();

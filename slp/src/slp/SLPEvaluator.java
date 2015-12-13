@@ -91,7 +91,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 				env.handleSemanticError(expr.name +" cannot be resolved to a variable"  ,expr.line);
 			visitResult.type=symbolEntry.getEntryTypeID();
 			visitResult.isInitialized=symbolEntry.getIsInitialized();
-			if(visitResult.isInitialized)
+			if(!visitResult.isInitialized)
 				visitResult.uninitializedId=expr.name;
 		}
 		return visitResult;
@@ -214,11 +214,9 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 	public VisitResult visit(Class clss, Environment env)  {
 		env.setCurrentClass(clss);
-		env.enterScope();
 			
 		clss.dclrList.accept(this, env);
 		
-		env.leaveScope();
 		env.setCurrentClass(null);
 		
 		return null;
@@ -266,7 +264,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 	private boolean IsMainMethod(Method method) {
 
-		if(method.isStatic && method.name==MAIN_METHOD && method.type==null)
+		if(method.isStatic && method.name.equals(MAIN_METHOD) && method.type==null)
 		{
 			if(method.formalsList.formals.size()==1)
 			{
@@ -519,7 +517,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		env.validateTypeMismatch(Environment.INT, indexExprResult.type, expr.line);
 		TypeEntry type;
 		if(targetExprResult.type.getTypeDimension()-1==0)
-			type=env.getTypeEntry(targetExprResult.type.getEntryName());
+			type=env.getTypeEntry(targetExprResult.type.getTypeName());
 		else
 			type=ArrayTypeEntry.makeArrayTypeEntry(targetExprResult.type,targetExprResult.type.getTypeDimension()-1);
 		return new VisitResult(type);
@@ -561,7 +559,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 	public VisitResult visit(InstantExpr expr, Environment env) {
 		TypeEntry classType= env.getTypeEntry(expr.className); 
-		if(classType.getClass()!=null)
+		if(classType.getClass()==null)
 			env.handleSemanticError("cannot create an instance of type  "+expr.className, expr.line);
 		return new VisitResult(classType);
 	}
@@ -572,6 +570,10 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		if(!currentMethod.isStatic)
 			env.handleSemanticError("cannot use this in a static context", thisExpr.line);
 		return new VisitResult(env.getTypeEntry(currentMethod.name));
+	}
+
+	public VisitResult visit(LocationExpr expr, Environment env) {
+		return expr.location.accept(this, env);
 	}
 	
  

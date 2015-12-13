@@ -283,11 +283,7 @@ public class Environment {
 		symbolTable.setEntryInitialized(refName);
 	}
 
-	public TypeEntry getExprType(TypeEntry exprType, String fieldName) {
-		
-		// TODO Auto-generated method stub
-		return null;
-	}
+
 	TypeEntry getExprType(String varName) {	
 		return symbolTable.getEntryByName(varName).getEntryTypeID();
 	}
@@ -339,10 +335,12 @@ public class Environment {
 
 			 
 				
-				
-
-				TypeEntry methodType =  Validator.validateType(method.type, this); 
-				Validator.validateLibraryInstantiation(methodType,this,method.line);
+				TypeEntry methodType=null;
+				if(method.type!=null)
+				{
+					 methodType =  Validator.validateType(method.type, this); 
+					Validator.validateLibraryInstantiation(methodType,this,method.line);
+				}
 				MethodSymbolEntry methodSymbol =new MethodSymbolEntry(method.name, methodType, method.line);
 				TypeEntry tmpArgType;
 				for(Formals formal:method.formalsList.formals){
@@ -352,7 +350,6 @@ public class Environment {
 					
 
 					tmpArgType=  Validator.validateType(formal.type, this);
-					Validator.validateLibraryInstantiation(methodType,this,method.line);
 					methodSymbol.addToArgs(tmpArgType);
 				}
 				clssType.addToScopes(methodSymbol, method.isStatic);
@@ -364,11 +361,11 @@ public class Environment {
 				
 
 				
-				addField(field.name, alreadySeen, instanceScope, fieldType, field.line);
+				addField(field.name, alreadySeen, instanceScope, fieldType,clssType, field.line);
 				
 				for(String id : field.extraIDs.ids){
 
-					addField(id, alreadySeen, instanceScope, fieldType, field.line);
+					addField(id, alreadySeen, instanceScope, fieldType,clssType, field.line);
 
 
 				}
@@ -378,20 +375,21 @@ public class Environment {
 		}
 
 	}
-	private void addField(String name,Set<String> alreadySeen,SymbolTable instanceScope,TypeEntry type, int line){
+	private void addField(String name,Set<String> alreadySeen,SymbolTable instanceScope,TypeEntry type,TypeEntry clssType, int line){
 
-		if(alreadySeen.contains(name)||type.isNameTaken(name)){
-			handleSemanticError("Duplicate definition " + name + " in type " + type.getEntryName(),line);	
+		if(alreadySeen.contains(name)||clssType.isNameTaken(name)){
+			handleSemanticError("Duplicate definition " + name + " in type " + clssType.getEntryName(),line);	
 		}
 		alreadySeen.add(name);
 		SymbolEntry parentSymbol=instanceScope.getEntryByName(name);
 		if(parentSymbol!=null && parentSymbol instanceof MethodSymbolEntry){
-			handleSemanticError("Duplicate definition " + name + " in type " + type.getEntryName(),line);
+			handleSemanticError("Duplicate definition " + name + " in type " + clssType.getEntryName(),line);
 		}
 		
 		SymbolEntry fieldSymbol =new SymbolEntry(name, type, line);
+		fieldSymbol.setIsInitialized(true);
 		
-		type.addToScopes(fieldSymbol, false);
+		clssType.addToScopes(fieldSymbol, false);
 	}
 }
 
