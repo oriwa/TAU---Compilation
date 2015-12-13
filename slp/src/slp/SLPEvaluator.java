@@ -75,10 +75,16 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		VisitResult visitResult=new VisitResult();
 		if(expr.target_expr!=null)
 		{
+			 
 			VisitResult targetResult=expr.target_expr.accept(this, env);
 			Validator.validateInitialized(targetResult, expr.line, env);
-			SymbolTable symbolTable=targetResult.type.getScope(false);
-			SymbolEntry symbolEntry=symbolTable.getEntryByName(expr.name);
+
+			SymbolEntry symbolEntry=null;
+			if(targetResult.type!=null)
+			{
+				SymbolTable symbolTable=targetResult.type.getScope(false);
+				symbolEntry=symbolTable.getEntryByName(expr.name);
+			}
 			if(symbolEntry==null || symbolEntry instanceof MethodSymbolEntry)
 				env.handleSemanticError(expr.name +" cannot be resolved or is not a field"  ,expr.line);
 			
@@ -437,10 +443,11 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			VisitResult exprResult= virtualCall.expr.accept(this, env);
 			exprType =exprResult.type;
 		}
-		
-		if (exprType.isPrimitive())
-			env.handleSemanticError("Cannot invoke " + virtualCall.name + " on primitive type " + exprType.getEntryName(), virtualCall.line);
-
+		if (exprType == null ||exprType.isPrimitive())
+		{
+			String actualTypeName = exprType == null ? "void" : exprType.getEntryName();
+			env.handleSemanticError("Cannot invoke " + virtualCall.name + " on primitive type " + actualTypeName, virtualCall.line);
+		}	
 		MethodSymbolEntry m = env.getMethodInClass(virtualCall.name, false, exprType);
 		if (m == null)
 			env.handleSemanticError("The virtual method " + virtualCall.name + " is undefined for the type " + exprType.getEntryName(), virtualCall.line);
@@ -464,7 +471,9 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	public VisitResult visit(StaticCall staticCall, Environment env) {
 		String exprTypeName = staticCall.className;
 		TypeEntry exprType = env.getTypeEntry(exprTypeName);
-		
+		if(exprType==null)
+			env.handleSemanticError(staticCall.className + " cannot be resolved", staticCall.line);
+	
 		if (exprType.isPrimitive())
 			env.handleSemanticError("Cannot invoke " + staticCall.name + " on primitive type " + exprType.getEntryName(), staticCall.line);
 
@@ -511,9 +520,11 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 		VisitResult targetExprResult= expr.target_expr.accept(this, env);
 		Validator.validateInitialized(targetExprResult, expr.line, env);
-		if(targetExprResult.type.getTypeDimension()==0)
-			env.handleSemanticError("the type of the expression must be an array type but it resolved to "+targetExprResult.type.getEntryName(), expr.line);
-		
+		if(targetExprResult.type ==null || targetExprResult.type.getTypeDimension()==0)
+		{
+			String actualTypeName = targetExprResult.type == null ? "void" : targetExprResult.type.getEntryName();
+			env.handleSemanticError("the type of the expression must be an array type but it resolved to "+actualTypeName, expr.line);
+		}
 		VisitResult indexExprResult= expr.index_expr.accept(this, env);
 		Validator.validateInitialized(indexExprResult, expr.line, env);
 		env.validateTypeMismatch(Environment.INT, indexExprResult.type, expr.line);
@@ -528,8 +539,12 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	public VisitResult visit(ArrayLenExpr expr, Environment env) {
 		VisitResult targetExprResult= expr.expr.accept(this, env);
 		Validator.validateInitialized(targetExprResult, expr.line, env);
-		if(targetExprResult.type.getTypeDimension()==0)
-			env.handleSemanticError("the type of the expression must be an array type but it resolved to "+targetExprResult.type.getEntryName(), expr.line);
+		
+		if(targetExprResult.type ==null || targetExprResult.type.getTypeDimension()==0)
+		{
+			String actualTypeName = targetExprResult.type == null ? "void" : targetExprResult.type.getEntryName();
+			env.handleSemanticError("the type of the expression must be an array type but it resolved to "+actualTypeName, expr.line);
+		}
 		return new VisitResult(env.getTypeEntry(Environment.INT));
 	}
 	
@@ -569,9 +584,9 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	public VisitResult visit(ThisExpr thisExpr, Environment env) {
 
 		Method currentMethod=env.getCurrentMethod();
-		if(!currentMethod.isStatic)
+		if(currentMethod.isStatic)
 			env.handleSemanticError("cannot use this in a static context", thisExpr.line);
-		return new VisitResult(env.getTypeEntry(currentMethod.name));
+		return new VisitResult(env.getCurrentClassType());
 	}
 
 	public VisitResult visit(LocationExpr expr, Environment env) {
