@@ -332,7 +332,8 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			env.enterScope();		
 		VisitResult ifStmtResult= ifStmt.ifStmt.accept(this,env);
 		Scope ifScope=ifStmtResult.prevScope;
-		boolean hasReturn=ifStmtResult.hasReturnStatement;
+		boolean ifHasReturnStatement=ifStmtResult.hasReturnStatement;
+		boolean hasReturn=false;
 		if (createScope)
 			ifScope=env.leaveScope();
 
@@ -344,7 +345,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 				env.enterScope();
 			VisitResult elseStmtResult=ifStmt.elseStmt.accept(this,env);
 			Scope elseScope=elseStmtResult.prevScope;
-			hasReturn=hasReturn && elseStmtResult.hasReturnStatement;
+			hasReturn=ifHasReturnStatement && elseStmtResult.hasReturnStatement;
 			if (createScope)
 				elseScope=env.leaveScope();
 			setInitializedEntriesInBothScopes(ifScope,elseScope,env);

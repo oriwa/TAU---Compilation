@@ -41,8 +41,10 @@ public class TypeEntry {
 		return entryId;
 	}
 	
-	public String getEntryName() {
-		String arrBrackets =new String(new char[this.getTypeDimension()]).replace("\0","[]");
+	public String getEntryName() { 
+		String	arrBrackets =new String(new char[this.getTypeDimension()]).replace("\0","[]");
+		if(this.getTypeDimension()>1)
+			arrBrackets=arrBrackets;
 		return entryName+arrBrackets;
 	}
 	
