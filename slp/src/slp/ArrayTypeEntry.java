@@ -14,10 +14,10 @@ public class ArrayTypeEntry extends TypeEntry {
 	public static ArrayTypeEntry makeArrayTypeEntry(TypeEntry arrayType, int arrayDimension) {
 		ArrayTypeEntry result=null;
 		if(arrayType.isPrimitive()){
-			result=new ArrayTypeEntry(arrayType.getEntryId(),arrayType.getEntryName());
+			result=new ArrayTypeEntry(arrayType.getEntryId(),arrayType.getTypeName());
 		}
 		else{
-			result=new ArrayTypeEntry(arrayType.getEntryId(),arrayType.getEntryName(),arrayType.getEntryClass());
+			result=new ArrayTypeEntry(arrayType.getEntryId(),arrayType.getTypeName(),arrayType.getEntryClass());
 		}
 		result.setTypeDimension(arrayDimension);
 		return result;

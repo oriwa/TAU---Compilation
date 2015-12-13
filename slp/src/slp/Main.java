@@ -16,7 +16,7 @@ public class Main {
 	 * @throws Exception 
 	 */
 	public static void main(String[] args) throws Exception {
-//		try {
+		try {
 			if (args.length == 0) {
 				System.out.println("Error: Missing input file argument!");
 				printUsage();
@@ -49,9 +49,9 @@ public class Main {
 			// Interpret the program
 			SLPEvaluator evaluator = new SLPEvaluator(root);
 			evaluator.evaluate();
-//		} catch (Exception e) {
-//			System.out.print(e);
-//		}
+		} catch (Exception e) {
+			System.out.print(e);
+		}
 	}
 	
 	/** Prints usage information about this application to System.out

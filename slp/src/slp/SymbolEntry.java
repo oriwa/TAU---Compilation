@@ -8,6 +8,11 @@ public  class SymbolEntry {
 	private boolean isInitialized; 
 	//private final ReferenceRole role;
 	
+	private boolean isArg=false;
+	public void setIsArg() {isArg=true;}
+	public boolean isArg() {return isArg;}
+	
+	
 	public SymbolEntry(String entryName, TypeEntry typeId, int lineOfDefinition){
 		this.entryName=entryName;
 		this.type=typeId;

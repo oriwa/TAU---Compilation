@@ -18,7 +18,7 @@ public class Validator {
 			if(matchingTypes&&lType.getEntryId()==expected.getEntryId()){
 				return; //all okay, string+string
 			}
-			//else continue as an ordinarymathematical operation
+			//else continue as an ordinary mathematical operation
 		case MINUS:
 		case MULTIPLY:
 		case DIVIDE:

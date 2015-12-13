@@ -57,18 +57,31 @@ public class Environment {
 	
 	public void validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType,int line)
 	{
-		if(!validateTypeMismatch(expectedType,actualType))
-			handleSemanticError("type mismatch: cannot convert from "+actualType.getEntryName()+" to "+expectedType.getEntryName(),line);
+		if(!validateTypeMismatch(expectedType,actualType)) {
+			String actualTypeName = actualType == null ? "void" : actualType.getEntryName();
+			handleSemanticError("type mismatch: cannot convert from "+ actualTypeName +" to "+expectedType.getEntryName(),line);
+		}
 	}
 	
-	private boolean validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType){
+	public boolean validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType){
 		int expectedDimension = expectedType.getTypeDimension();
+		if (actualType == null)
+			return false;
+
+		boolean isArray = expectedDimension != 0;
+		
+		if (isArray && actualType.getEntryName().equals(NULL)){
+			return true;
+		}
+		
+		
 		int actualDimension = actualType.getTypeDimension();
 		
 		if (expectedDimension != actualDimension)
 			return false;
 		
-		boolean isArray = expectedDimension != 0;
+		
+	
 		if (isArray && expectedType.getEntryId() != actualType.getEntryId())
 			return false;
 		
@@ -94,8 +107,8 @@ public class Environment {
 		if (potentialdescendant.isPrimitive()) {
 			return false;
 		}
-		if (potentialAncestor.getEntryName() == NULL){
-			return true;
+		if (potentialdescendant.getEntryName().equals(NULL)){
+			return potentialAncestor.isNullable();
 		}
 		String parentName = potentialdescendant.getEntryClass().extends_name;
 		if (parentName != null) { // else no-parent
@@ -122,10 +135,9 @@ public class Environment {
 	}
 
 	public void addToEnv(Formals formals) {
-	
 			SymbolEntry symbolEntry =addDeclaration(Validator.validateType( formals.type, this),formals.name, formals.line);
 			symbolEntry.setIsInitialized(true);
-		
+			symbolEntry.setIsArg();
 	}
  
 //	public void addToEnv(FormalsList formals) {
@@ -185,25 +197,7 @@ public class Environment {
 		}
 		
 		TypeEntry typeEntry = new TypeEntry(typeTable.size(), clss.name, clss);
-		if(clss.extends_name!=null){
-			TypeEntry extendsTypeEntry= getTypeEntry(clss.extends_name);
-			if(extendsTypeEntry!=null)
-			{
-				Validator.validateLibraryInstantiation(typeEntry, this, clss.line);
-				Class extendsClass=extendsTypeEntry.getEntryClass();
-				if(!extendsClass.isSealed){
-					typeEntry.expandScope(extendsTypeEntry);
-				}
-				else{
-					handleSemanticError("can not extend form class" + clss.extends_name,clss.line);	
-				}
-				
-			}
-			else
-			{					
-				handleSemanticError("class \""+clss.extends_class.name +"\" is undefined, classes can only extend previously defined classes",clss.line);
-			}
-		}
+		
 		
 		addTypeEntry(typeEntry);
 		return typeEntry;
@@ -311,10 +305,9 @@ public class Environment {
 	public void addDclrs(Class clss) {
 	
 		TypeEntry clssType=getTypeEntry(clss.name);
+		extendClass(clss,clssType);
 		
 		SymbolTable instanceScope = clssType.getScope(TypeEntry.INSTANCE_SCOPE);
-		
-		
 		
 		Set<String> alreadySeen= new HashSet<String>();
 		for (Dclr dclr : clss.dclrList.declarations){
@@ -325,12 +318,9 @@ public class Environment {
 				}
 				alreadySeen.add(method.name);
 				SymbolEntry parentSymbol=instanceScope.getEntryByName(method.name);
-				if(parentSymbol!=null && parentSymbol instanceof MethodSymbolEntry){
+				if(parentSymbol!=null && !(parentSymbol instanceof MethodSymbolEntry)){
 					handleSemanticError("Duplicate definition " + method.name + " in type " + clss.name,clss.line);
 				}
-				
-
-			 
 				
 				TypeEntry methodType=null;
 				if(method.type!=null)
@@ -372,6 +362,29 @@ public class Environment {
 		}
 
 	}
+	private void extendClass(Class clss, TypeEntry clssType) {
+		if(clss.extends_name!=null){
+			TypeEntry extendsTypeEntry= getTypeEntry(clss.extends_name);
+			if(extendsTypeEntry!=null)
+			{
+				Validator.validateLibraryInstantiation(extendsTypeEntry, this, clss.line);
+				Class extendsClass=extendsTypeEntry.getEntryClass();
+				if(!extendsClass.isSealed){
+					clssType.expandScope(extendsTypeEntry);
+				}
+				else{
+					handleSemanticError("can not extend from class" + clss.extends_name,clss.line);	
+				}
+				
+			}
+			else
+			{					
+				handleSemanticError("class \""+clss.extends_name +"\" is undefined, classes can only extend previously defined classes",clss.line);
+			}
+		}
+		
+	}
+
 	private void addField(String name,Set<String> alreadySeen,SymbolTable instanceScope,TypeEntry type,TypeEntry clssType, int line){
 
 		if(alreadySeen.contains(name)||clssType.isNameTaken(name)){

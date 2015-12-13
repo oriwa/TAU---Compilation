@@ -14,12 +14,20 @@
 
 class Quicksort {
     int[] a;
+    int[][][] b;
+    
 
     int partition(int low, int high) {
+    
+
+    
     int pivot = a[low];
-    int i = low;
+    int i =low;
     int j = high;
     int tmp;
+    
+    if(i>j)
+    	return j;
 
     while (!false) {
         while (a[i] < pivot) i = i+1;
@@ -34,7 +42,7 @@ class Quicksort {
         j = j-1;
     }
 
-    return j;
+
     }
 
     void quicksort(int low, int high) {
