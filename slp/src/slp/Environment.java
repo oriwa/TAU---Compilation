@@ -84,10 +84,7 @@ public class Environment {
 		validateTypeMismatch(getTypeEntry(expectedTypeName),actualType, line);
 	}
 	
-	public void validateTypeMismatch(String expectedTypeName,Integer actualTypeId,int line)
-	{
-		validateTypeMismatch(getTypeEntry(expectedTypeName),getTypeEntry(actualTypeId), line);
-	}
+
 
 	public boolean isA(TypeEntry potentialAncestor,
 			TypeEntry potentialdescendant) {
@@ -304,7 +301,7 @@ public class Environment {
 	}
 
 	public MethodSymbolEntry getCurrentMethodType() {
-		return currentMethodType;
+		return getMethodInClass(currentMethod.name,currentMethod.isStatic,getCurrentClassType());
 	}
 
 	public void setCurrentMethodType(MethodSymbolEntry currentMethodType) {

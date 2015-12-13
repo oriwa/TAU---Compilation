@@ -313,7 +313,8 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		{
 			VisitResult exprResult= returnStmt.expr.accept(this,env);
 			Validator.validateInitialized(exprResult, returnStmt.line, env);
-			env.validateTypeMismatch(currentMethod.type.name, exprResult.type, returnStmt.line);
+			
+			env.validateTypeMismatch(env.getCurrentMethodType().getEntryTypeID(), exprResult.type, returnStmt.line);
 		}
 		return new VisitResult(true);
 	}
@@ -421,7 +422,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		{
 			VisitResult valueResult = declarationStmt.value.accept(this,env);
 			Validator.validateInitialized(valueResult, declarationStmt.line, env);
-			env.validateTypeMismatch(declarationStmt.type.name, valueResult.type, declarationStmt.line);
+			env.validateTypeMismatch(dclrType.type, valueResult.type, declarationStmt.line);
 			env.setEntryInitialized(declarationStmt.name);
 		}
 		return new VisitResult(false);
