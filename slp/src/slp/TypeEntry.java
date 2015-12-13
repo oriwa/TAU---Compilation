@@ -43,8 +43,6 @@ public class TypeEntry {
 	
 	public String getEntryName() { 
 		String	arrBrackets =new String(new char[this.getTypeDimension()]).replace("\0","[]");
-		if(this.getTypeDimension()>1)
-			arrBrackets=arrBrackets;
 		return entryName+arrBrackets;
 	}
 	
@@ -57,6 +55,10 @@ public class TypeEntry {
 	}
 	public boolean isPrimitive() {
 		return isPrimitive;
+	}
+	
+	public boolean isNullable() {
+		return !isPrimitive || (entryName==Environment.STRING);
 	}
 
 	public Class getEntryClass() {

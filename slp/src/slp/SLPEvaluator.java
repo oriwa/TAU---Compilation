@@ -452,7 +452,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		if (m == null)
 			env.handleSemanticError("The virtual method " + virtualCall.name + " is undefined for the type " + exprType.getEntryName(), virtualCall.line);
 
-		boolean isCallValid = verifyMethodCall(m.getMethodArgs(), virtualCall.callArgs.expressions, env);
+		boolean isCallValid = verifyMethodCall(m.getMethodArgs(), virtualCall.callArgs.expressions, env,virtualCall.line);
 		if (!isCallValid)
 			env.handleSemanticError("The method " + virtualCall.name + " is undefined for the argumetns " + virtualCall.callArgs.expressions.toString(), virtualCall.line);
 
@@ -481,7 +481,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		if (m == null)
 			env.handleSemanticError("The static method " + staticCall.name + " is undefined for the type " + exprType.getEntryName(), staticCall.line);
 
-		boolean isCallValid = verifyMethodCall(m.getMethodArgs(), staticCall.callArgs.expressions, env);
+		boolean isCallValid = verifyMethodCall(m.getMethodArgs(), staticCall.callArgs.expressions, env,staticCall.line);
 		if (!isCallValid)
 			env.handleSemanticError("The method " + staticCall.name + " is undefined for the argumetns " + staticCall.callArgs.expressions.toString(), staticCall.line);
 
@@ -494,16 +494,14 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		return new VisitResult(type);
 	}
 
-	private boolean verifyMethodCall(List<TypeEntry> formals, List<Expr> callArgs, Environment env){
+	private boolean verifyMethodCall(List<TypeEntry> formals, List<Expr> callArgs, Environment env,int line){
 		if (formals.size() != callArgs.size())
 			return false;
 		
 		for (int i = 0; i < formals.size(); i++){
 			VisitResult exprResult=  callArgs.get(i).accept(this, env);
-			TypeEntry exprType = exprResult.type;
-			
-			if (!exprType.equals(formals.get(i)))
-				return false;
+			TypeEntry exprType = exprResult.type;			
+			env.validateTypeMismatch(formals.get(i), exprType,line);
 		}
 		
 		return true;

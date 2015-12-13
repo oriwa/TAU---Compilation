@@ -63,7 +63,7 @@ public class Environment {
 		}
 	}
 	
-	private boolean validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType){
+	public boolean validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType){
 		int expectedDimension = expectedType.getTypeDimension();
 		if (actualType == null)
 			return false;
@@ -99,8 +99,8 @@ public class Environment {
 		if (potentialdescendant.isPrimitive()) {
 			return false;
 		}
-		if (potentialAncestor.getEntryName() == NULL){
-			return true;
+		if (potentialdescendant.getEntryName().equals(NULL)){
+			return potentialAncestor.isNullable();
 		}
 		String parentName = potentialdescendant.getEntryClass().extends_name;
 		if (parentName != null) { // else no-parent
