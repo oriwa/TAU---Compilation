@@ -275,7 +275,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			if(method.formalsList.formals.size()==1)
 			{
 				Formals formal=method.formalsList.formals.get(0);
-				if(formal.type.name==Environment.STRING&& formal.type.array_dimension==1)
+				if(formal.type.name.equals(Environment.STRING) && formal.type.array_dimension==1)
 					return true;
 			}
 		}					
@@ -304,7 +304,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		callStmt.call.accept(this, env);
 		return new VisitResult();
 	}
-
 	public VisitResult visit(ReturnStmt returnStmt, Environment env) {
 		
 		Method currentMethod=env.getCurrentMethod();
@@ -317,6 +316,8 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		}
 		else
 		{
+			if (currentMethod.type == null)
+				env.handleSemanticError("Void methods cannot retrun value." , currentMethod.line);
 			VisitResult exprResult= returnStmt.expr.accept(this,env);
 			Validator.validateInitialized(exprResult, returnStmt.line, env);
 			
@@ -454,7 +455,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 		boolean isCallValid = verifyMethodCall(m.getMethodArgs(), virtualCall.callArgs.expressions, env,virtualCall.line);
 		if (!isCallValid)
-			env.handleSemanticError("The method " + virtualCall.name + " is undefined for the argumetns " + virtualCall.callArgs.expressions.toString(), virtualCall.line);
+			env.handleSemanticError("The virtual method " + virtualCall.name + " expected " + m.getMethodArgs().size() + " arguments. Passed " + virtualCall.callArgs.expressions.size() + ".", virtualCall.line);
 
 		
 		TypeEntry type = m.getEntryTypeID();
@@ -483,7 +484,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 
 		boolean isCallValid = verifyMethodCall(m.getMethodArgs(), staticCall.callArgs.expressions, env,staticCall.line);
 		if (!isCallValid)
-			env.handleSemanticError("The method " + staticCall.name + " is undefined for the argumetns " + staticCall.callArgs.expressions.toString(), staticCall.line);
+			env.handleSemanticError("The static method " + staticCall.name + " expected " + m.getMethodArgs().size() + " arguments. Passed " + staticCall.callArgs.expressions.size() +".", staticCall.line);
 
 		TypeEntry type = m.getEntryTypeID();
 		if (type != null){	

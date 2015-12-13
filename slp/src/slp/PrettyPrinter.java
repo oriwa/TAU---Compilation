@@ -197,7 +197,8 @@ public class PrettyPrinter implements Visitor {
 		tabify();
 		System.out.println(returnStmt);
 		depth++;
-		returnStmt.expr.accept(this);
+		if (returnStmt.expr != null)
+			returnStmt.expr.accept(this);
 		depth--;
 	}
 
