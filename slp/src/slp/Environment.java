@@ -68,12 +68,21 @@ public class Environment {
 		if (actualType == null)
 			return false;
 		
+
+		boolean isArray = expectedDimension != 0;
+		
+		if (isArray && actualType.getEntryName().equals(NULL)){
+			return true;
+		}
+		
+		
 		int actualDimension = actualType.getTypeDimension();
 		
 		if (expectedDimension != actualDimension)
 			return false;
 		
-		boolean isArray = expectedDimension != 0;
+		
+	
 		if (isArray && expectedType.getEntryId() != actualType.getEntryId())
 			return false;
 		
