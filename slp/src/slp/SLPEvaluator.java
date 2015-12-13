@@ -109,8 +109,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	}
 
 	public VisitResult visit(UnaryOpExpr expr, Environment env) {
-
-
 		VisitResult value = expr.operand.accept(this, env);	
 		Validator.validateInitialized(value, expr.line, env);
 		Validator.validateIlegalOp(value.type, expr.op, expr.line,env);
@@ -123,7 +121,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		VisitResult rhsValue = expr.rhs.accept(this, env);
 		Validator.validateInitialized(rhsValue, expr.line, env);
 		
-		Validator.validateIlegalOp(lhsValue.type,lhsValue.type,expr.op, expr.line,env);
+		Validator.validateIlegalOp(lhsValue.type,rhsValue.type,expr.op, expr.line,env);
 
 
 		switch (expr.op){
@@ -143,45 +141,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			return new VisitResult(env.getTypeEntry(Environment.BOOLEAN));
 		}
 		
-		
-//		int result = 0;
-//		switch (expr.op) {
-//		case DIVIDE:
-//			if (rhsInt == 0)
-//				env.handleSemanticError("Attempt to divide by zero: " + expr, expr.line);
-//			result = lhsInt / rhsInt;
-//			break;
-//		case MINUS:
-//			result = lhsInt - rhsInt;
-//			break;
-//		case MULTIPLY:
-//			result = lhsInt * rhsInt;
-//			break;
-//		case PLUS:
-//			result = lhsInt + rhsInt;
-//			break;
-//		case LT:
-//			result = lhsInt < rhsInt ? 1 : 0;
-//			break;
-//		case GT:
-//			result = lhsInt > rhsInt ? 1 : 0;
-//			break;
-//		case LTE:
-//			result = lhsInt <= rhsInt ? 1 : 0;
-//			break;
-//		case GTE:
-//			result = lhsInt >= rhsInt ? 1 : 0;
-//			break;
-//		case LAND:
-//			result = (lhsInt!=0 && rhsInt!=0) ? 1 : 0;
-//			break;
-//		case LOR:
-//			result = (lhsInt!=0 || rhsInt!=0) ? 1 : 0;
-//			break;
-//		default:
-//			env.handleSemanticError("Encountered unexpected operator type: " + expr.op, expr.line);
-//		}
-
 	}
 
 	public VisitResult visit(Program program, Environment env)  {
@@ -258,10 +217,12 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 			env.addMainMethodNumber();
 		
 		env.setCurrentMethod(method);
+		env.enterScope();
 		method.formalsList.accept(this, env);
 		VisitResult stmtListResult=method.stmtList.accept(this, env);
 		if(!stmtListResult.hasReturnStatement && method.type!=null)
 			env.handleSemanticError("this method must return a result of type "+method.type.name, method.line);
+		env.leaveScope();
 		env.setCurrentMethod(null);
 		env.setSymbolTable(null);
 		return null;

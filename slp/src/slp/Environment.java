@@ -67,7 +67,6 @@ public class Environment {
 		int expectedDimension = expectedType.getTypeDimension();
 		if (actualType == null)
 			return false;
-		
 
 		boolean isArray = expectedDimension != 0;
 		
