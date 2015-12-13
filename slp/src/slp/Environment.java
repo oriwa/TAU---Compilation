@@ -57,12 +57,17 @@ public class Environment {
 	
 	public void validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType,int line)
 	{
-		if(!validateTypeMismatch(expectedType,actualType))
-			handleSemanticError("type mismatch: cannot convert from "+actualType.getEntryName()+" to "+expectedType.getEntryName(),line);
+		if(!validateTypeMismatch(expectedType,actualType)) {
+			String actualTypeName = actualType == null ? "void" : actualType.getEntryName();
+			handleSemanticError("type mismatch: cannot convert from "+ actualTypeName +" to "+expectedType.getEntryName(),line);
+		}
 	}
 	
 	private boolean validateTypeMismatch(TypeEntry expectedType,TypeEntry actualType){
 		int expectedDimension = expectedType.getTypeDimension();
+		if (actualType == null)
+			return false;
+		
 		int actualDimension = actualType.getTypeDimension();
 		
 		if (expectedDimension != actualDimension)
