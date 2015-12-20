@@ -4,6 +4,7 @@ public class IRVisitResult {
 
 	public TypeEntry type;
 	public Object value;
+	public String moveInstruction="Move";
 	
 	public IRVisitResult()
 	{

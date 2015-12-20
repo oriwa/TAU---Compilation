@@ -335,6 +335,12 @@ public class IREnvironment {
 		writeLine( line+":");
 	}
 		
+	public void writeCode(String line)
+	{
+		writeLine("		"+line);
+	}
+	
+	
 	public void writeLine(String line)
 	{
 		outputLines.add(line);

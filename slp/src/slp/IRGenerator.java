@@ -94,9 +94,9 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		method.stmtList.accept(this, env);
 
 		if(Validator.isMainMethod(method))
-			env.writeLine("Library __exit(0),"+IREnvironment.RDUMMY);
+			env.writeCode("Library __exit(0),"+IREnvironment.RDUMMY);
 		else if(method.type==null)
-			env.writeLine("Return 9999");
+			env.writeCode("Return 9999");
 		env.resetRegister();
 		env.writeSectionBottom();
 		env.leaveScope();
@@ -138,7 +138,12 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(AssignStmt stmt, IREnvironment env) {
-		// TODO Auto-generated method stub
+
+		IRVisitResult rhsResult=stmt.rhs.accept(this, env);
+		String rhsRegisterKey = env.getRegisterKey();
+		env.writeCode(rhsResult.moveInstruction+" "+rhsResult.value+","+rhsRegisterKey);
+		IRVisitResult locationResult=stmt.location.accept(this, env);
+		env.writeCode(locationResult.moveInstruction+" "+rhsRegisterKey+","+locationResult.value);
 		return null;
 	}
 
@@ -155,7 +160,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			IRVisitResult exprResult= returnStmt.expr.accept(this,env);
 			returnValue=exprResult.value.toString();
 		}
-		env.writeLine("Return "+returnValue);
+		env.writeCode("Return "+returnValue);
 		return null;
 	}
 
@@ -166,14 +171,14 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		if (createScope)
 			env.enterScope();
 		String ifLabelKey = env.getLabelKey();
-		env.writeLine("JumpFalse "+ifLabelKey+","+exprResult.value);
+		env.writeCode("JumpFalse "+ifLabelKey+","+exprResult.value);
 		ifStmt.ifStmt.accept(this,env); 		
 		if (createScope)
 			env.leaveScope();
 		if(ifStmt.elseStmt!=null)
 		{
 			String elseLabelKey = env.getLabelKey();
-			env.writeLine("Jump "+elseLabelKey);
+			env.writeCode("Jump "+elseLabelKey+","+IREnvironment.RDUMMY);
 			env.writeLabel(ifLabelKey);
 			createScope = !(ifStmt.elseStmt instanceof StmtList);
 			if (createScope)
@@ -203,7 +208,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		IRVisitResult whileExprResult =whileStmt.expr.accept(this,env);  
 		
 
-		env.writeLine("JumpFalse "+stopLabelKey+","+whileExprResult.value);
+		env.writeCode("JumpFalse "+stopLabelKey+","+whileExprResult.value);
 		
 		boolean createScope = !(whileStmt.stmt instanceof StmtList);
 		if (createScope)
@@ -211,7 +216,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		env.pushWhileLabels(whileLabelKey, stopLabelKey);
 		whileStmt.stmt.accept(this,env);  
 		
-		env.writeLine("Jump "+whileLabelKey);
+		env.writeCode("Jump "+whileLabelKey+","+IREnvironment.RDUMMY);
 		env.writeLabel(stopLabelKey);
 		
 		env.popWhileLabels();
@@ -224,13 +229,13 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 
 	public IRVisitResult visit(BreakStmt breakStmt, IREnvironment env) {
 		WhileLabels whileLabels=env.getCurrentWhileLabels();
-		env.writeLine("Jump "+whileLabels.stopLabelKey);
+		env.writeCode("Jump "+whileLabels.stopLabelKey+","+IREnvironment.RDUMMY);
 		return null;
 	}
 
 	public IRVisitResult visit(ContinueStmt continueStmt, IREnvironment env) {
 		WhileLabels whileLabels=env.getCurrentWhileLabels();
-		env.writeLine("Jump "+whileLabels.whileLabelKey);
+		env.writeCode("Jump "+whileLabels.whileLabelKey+","+IREnvironment.RDUMMY);
 		return null;
 	}
 
@@ -260,13 +265,12 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(LocationExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		return expr.location.accept(this, env);
 	}
 
 	public IRVisitResult visit(ThisExpr thisExpr, IREnvironment env) {
 		String registerKey= env.getRegisterKey();
-		env.writeLine("Move this,"+registerKey );
+		env.writeCode("Move this,"+registerKey );
 	
 		return new IRVisitResult(env.getCurrentClassType(),registerKey);
 	}
@@ -275,8 +279,8 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		TypeEntry classType= env.getTypeEntry(expr.className);  
 		String registerKey= env.getRegisterKey();
 		int typeSize= (classType.fieldMap.size()+1)*4;
-		env.writeLine("Library __allocateObject("+typeSize+"),"+registerKey);
-		env.writeLine("MoveField "+classType.getUniqueName()+","+registerKey+".0");
+		env.writeCode("Library __allocateObject("+typeSize+"),"+registerKey);
+		env.writeCode("MoveField "+classType.getUniqueName()+","+registerKey+".0");
 		return new IRVisitResult(classType,registerKey);
 	}
 
@@ -286,33 +290,50 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(ArrayVarExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		IRVisitResult targetExprResult= expr.target_expr.accept(this, env); 
+		IRVisitResult indexExprResult= expr.index_expr.accept(this, env); 		
+		TypeEntry type;
+		if(targetExprResult.type.getTypeDimension()-1==0)
+			type=env.getTypeEntry(targetExprResult.type.getTypeName());
+		else
+			type=ArrayTypeEntry.makeArrayTypeEntry(targetExprResult.type,targetExprResult.type.getTypeDimension()-1);
+
+		env.writeCode("Library __checkNullRef("+targetExprResult.value+"),"+IREnvironment.RDUMMY);
+		env.writeCode("Library __checkArrayAccess("+targetExprResult.value+indexExprResult.value+"),"+IREnvironment.RDUMMY);
+		IRVisitResult irVisitResult=new IRVisitResult(type,targetExprResult.value+"["+indexExprResult.value+"]");
+		irVisitResult.moveInstruction="MoveArray";
+		return irVisitResult;
 	}
 
 	public IRVisitResult visit(ArrayLenExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		
+		IRVisitResult targetExprResult= expr.expr.accept(this, env);
+		String registerKey= env.getRegisterKey();
+		env.writeCode("Library __checkNullRef("+targetExprResult.value+"),"+IREnvironment.RDUMMY);
+		env.writeCode("ArrayLength "+targetExprResult.value+","+registerKey);
+		return new IRVisitResult(env.getTypeEntry(Environment.INT),registerKey);
 	}
 
 	public IRVisitResult visit(ArrayAllocExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		IRVisitResult exprResult= expr.expr.accept(this, env); 
+		IRVisitResult typeResult=expr.type.accept(this, env);		 
+		String registerKey= env.getRegisterKey();
+		env.writeCode("Library __checkSize("+exprResult.value+"),"+IREnvironment.RDUMMY);
+		env.writeCode("Library __allocateObject("+exprResult.value+"),"+registerKey);
+		return  new IRVisitResult(ArrayTypeEntry.makeArrayTypeEntry(typeResult.type,typeResult.type.getTypeDimension()+1),registerKey);
 	}
 
 	public IRVisitResult visit(NumberExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		return new IRVisitResult(env.getTypeEntry(IREnvironment.INT),expr.value);
 	}
 
 	public IRVisitResult visit(StringExpr expr, IREnvironment env) {
 		String stringLitralKey=env.getStringLitralKey(expr.value);		 
-		return new IRVisitResult(env.getTypeEntry(Environment.STRING),stringLitralKey);
+		return new IRVisitResult(env.getTypeEntry(IREnvironment.STRING),stringLitralKey);
 	}
 
 	public IRVisitResult visit(BooleanExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		return new IRVisitResult(env.getTypeEntry(IREnvironment.BOOLEAN),expr.value?1:0);
 	}
 
 	public IRVisitResult visit(NullExpr expr, IREnvironment env) {
