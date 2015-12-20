@@ -105,6 +105,11 @@ public class SymbolTable {
 		}
 	}
 	
+	public int getScopeDepth()
+	{
+		return scopes.size();
+	}
+	
 	
 	private void resetInitialized(HashSet<SymbolEntry> prevScopeInitializedEntries)
 	{

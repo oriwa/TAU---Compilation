@@ -3,6 +3,9 @@ package slp;
 
 public class Validator {
 	
+
+	private static final String MAIN_METHOD="main";
+	
 	public static void validateIlegalOp(TypeEntry lType, TypeEntry rType, Operator op, int line,Environment env) {
 		String errorV1="The operator " +op.toString() + " is undefined for types " +lType.getEntryName()+", "+rType.getEntryName();
 		String errorV2="incompatible operand types "+lType.getEntryName()+" and "+rType.getEntryName();
@@ -103,6 +106,20 @@ public class Validator {
 		if(type.array_dimension!=0)
 			typeEntry=ArrayTypeEntry.makeArrayTypeEntry(typeEntry,type.array_dimension);
 		return typeEntry;
+	}
+	
+	public static boolean isMainMethod(Method method) {
+
+		if(method.isStatic && method.name.equals(MAIN_METHOD) && method.type==null)
+		{
+			if(method.formalsList.formals.size()==1)
+			{
+				Formals formal=method.formalsList.formals.get(0);
+				if(formal.type.name.equals(Environment.STRING) && formal.type.array_dimension==1)
+					return true;
+			}
+		}					
+		return false;
 	}
 	
 }

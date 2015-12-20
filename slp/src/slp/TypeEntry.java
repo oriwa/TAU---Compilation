@@ -4,18 +4,23 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Set;
 
 public class TypeEntry {
 	public static final boolean STATIC_SCOPE=true,INSTANCE_SCOPE=false;
 	
 	private final int entryId;
 	private final String entryName;
+	private final String uniqueName;
 	private  boolean isPrimitive;
 	private final Class entryClass;
 	
 	private TypeEntry extending=null;
 	private Map<String,SymbolEntry> staticScope;
 	private Map<String,SymbolEntry> instanceScope;
+
+	public Map<String,Integer> fieldMap;
+	public Map<String,Integer> dispatchVector;
 	
 	
 	public TypeEntry(int entryId,String entryName){
@@ -23,16 +28,22 @@ public class TypeEntry {
 		this.entryName=entryName;
 		this.isPrimitive=true;
 		this.entryClass=null;
+		this.uniqueName=null;
 		
 	}
 	
 	public TypeEntry(int entryId,String entryName, Class entryClass){
 		this.entryId=entryId;
 		this.entryName=entryName;
+		this.uniqueName="_DV_"+entryName;
 		this.isPrimitive=false;
 		this.entryClass=entryClass;
+		
 		this.staticScope=new HashMap<String,SymbolEntry>();
 		this.instanceScope=new HashMap<String,SymbolEntry>();	
+		
+		this.fieldMap=new HashMap<String,Integer>();
+		this.dispatchVector=new HashMap<String,Integer>();
 	}
 	
 
@@ -75,12 +86,18 @@ public class TypeEntry {
 		if(isStatic){
 			staticScope.put(entry.getEntryName(), entry);
 		}
-		instanceScope.put(entry.getEntryName(), entry);
+		else
+		{
+			instanceScope.put(entry.getEntryName(), entry);
+		}
 	}
 	
 	private void addToScopes(Map<String,SymbolEntry> staticParentScope,Map<String,SymbolEntry> instanceParentScope){
 		staticScope.putAll(staticParentScope);
-		instanceScope.putAll(instanceParentScope);	
+		for (String key : instanceParentScope.keySet()) {
+			if(!instanceScope.containsKey(key))
+				instanceScope.put(key, instanceParentScope.get(key));
+		}
 	}
 	
 	
@@ -110,5 +127,39 @@ public class TypeEntry {
 	public boolean isNameTaken(String name) {
 		return  staticScope.containsKey(name)||instanceScope.containsKey(name);
 	}
+	
+	public void InitDispatchVector()
+	{
+		for (SymbolEntry entry : instanceScope.values()) {
+			if(entry instanceof MethodSymbolEntry)
+			{
+				dispatchVector.put(entry.uniqueName, dispatchVector.size());
+			}
+			else
+			{
+				fieldMap.put(entry.uniqueName, fieldMap.size());
+			}
+			
+		}
+		
+	}
+	
+	public String getDispatchVectorString()
+	{
+		String dispatchVectorString=uniqueName+": [";
+		Set<String> keySet=  dispatchVector.keySet();
+		int count=0;
+		for (String key : keySet) {		
+			dispatchVectorString+=key;
+			count++;
+			if(count!=keySet.size())
+				dispatchVectorString+=",";
+		}
+		dispatchVectorString+="]";
+		return dispatchVectorString;
+	}
+	
+	
+	
 	
 }

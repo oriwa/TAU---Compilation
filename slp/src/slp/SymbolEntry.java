@@ -4,8 +4,10 @@ public  class SymbolEntry {
 	private final String entryName;
 	private final int lineOfDefinition;
 	private final TypeEntry type;
-
+	
 	private boolean isInitialized; 
+	
+	public String uniqueName;
 	//private final ReferenceRole role;
 	
 	private boolean isArg=false;
