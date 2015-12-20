@@ -81,9 +81,6 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		TypeEntry currentClassType= env.getCurrentClassType();
 		
 		env.setSymbolTable(currentClassType.getScope(method.isStatic));
-		
-		
-
 		env.writeSectionHeader(currentClassType.getEntryName()+"."+method.name);
 		
 		boolean isMainMethod= Validator.isMainMethod(method);
@@ -100,7 +97,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			env.writeLine("Library __exit(0),"+IREnvironment.RDUMMY);
 		else if(method.type==null)
 			env.writeLine("Return 9999");
-		
+		env.resetRegister();
 		env.writeSectionBottom();
 		env.leaveScope();
 		env.setCurrentMethod(null);
@@ -109,12 +106,16 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(FormalsList formalsList, IREnvironment env) {
-		// TODO Auto-generated method stub
+		for (Formals f : formalsList.formals){
+			f.accept(this, env);
+		}
 		return null;
 	}
 
 	public IRVisitResult visit(Formals formals, IREnvironment env) {
-		// TODO Auto-generated method stub
+		formals.type.accept(this, env);
+		
+		env.addToEnv(formals);
 		return null;
 	}
 
@@ -124,13 +125,16 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(StmtList stmts, IREnvironment env) {
-		// TODO Auto-generated method stub
+		env.enterScope();
+		for (Stmt st : stmts.statements) {
+			st.accept(this, env);
+		}
+		env.leaveScope();
 		return null;
 	}
 
 	public IRVisitResult visit(Stmt stmt, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		throw new UnsupportedOperationException("Unexpected visit of Stmt!");
 	}
 
 	public IRVisitResult visit(AssignStmt stmt, IREnvironment env) {
@@ -144,27 +148,89 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(ReturnStmt returnStmt, IREnvironment env) {
-		// TODO Auto-generated method stub
+		 
+		String returnValue="9999";
+		if(returnStmt.expr!=null)
+		{
+			IRVisitResult exprResult= returnStmt.expr.accept(this,env);
+			returnValue=exprResult.value.toString();
+		}
+		env.writeLine("Return "+returnValue);
 		return null;
 	}
 
 	public IRVisitResult visit(IfStmt ifStmt, IREnvironment env) {
-		// TODO Auto-generated method stub
+		IRVisitResult exprResult= ifStmt.expr.accept(this,env); 
+		
+		boolean createScope = !(ifStmt.ifStmt instanceof StmtList);
+		if (createScope)
+			env.enterScope();
+		String ifLabelKey = env.getLabelKey();
+		env.writeLine("JumpFalse "+ifLabelKey+","+exprResult.value);
+		ifStmt.ifStmt.accept(this,env); 		
+		if (createScope)
+			env.leaveScope();
+		if(ifStmt.elseStmt!=null)
+		{
+			String elseLabelKey = env.getLabelKey();
+			env.writeLine("Jump "+elseLabelKey);
+			env.writeLabel(ifLabelKey);
+			createScope = !(ifStmt.elseStmt instanceof StmtList);
+			if (createScope)
+				env.enterScope();
+			ifStmt.elseStmt.accept(this,env);
+			if (createScope)
+				env.leaveScope();
+			env.writeLabel(elseLabelKey);
+		}
+		else
+		{
+			env.writeLabel(ifLabelKey);
+		}
+		
+
 		return null;
 	}
 
 	public IRVisitResult visit(WhileStmt whileStmt, IREnvironment env) {
-		// TODO Auto-generated method stub
+		
+		
+
+		String whileLabelKey = env.getLabelKey();
+		String stopLabelKey = env.getLabelKey();
+		
+		env.writeLabel(whileLabelKey);
+		IRVisitResult whileExprResult =whileStmt.expr.accept(this,env);  
+		
+
+		env.writeLine("JumpFalse "+stopLabelKey+","+whileExprResult.value);
+		
+		boolean createScope = !(whileStmt.stmt instanceof StmtList);
+		if (createScope)
+			env.enterScope();		
+		env.pushWhileLabels(whileLabelKey, stopLabelKey);
+		whileStmt.stmt.accept(this,env);  
+		
+		env.writeLine("Jump "+whileLabelKey);
+		env.writeLabel(stopLabelKey);
+		
+		env.popWhileLabels();
+		if (createScope)
+			env.leaveScope();		
+		
+							
 		return null;
 	}
 
 	public IRVisitResult visit(BreakStmt breakStmt, IREnvironment env) {
-		// TODO Auto-generated method stub
+		WhileLabels whileLabels=env.getCurrentWhileLabels();
+		env.writeLine("Jump "+whileLabels.stopLabelKey);
 		return null;
 	}
 
 	public IRVisitResult visit(ContinueStmt continueStmt, IREnvironment env) {
-		// TODO Auto-generated method stub
+		WhileLabels whileLabels=env.getCurrentWhileLabels();
+		env.writeLine("Jump "+whileLabels.whileLabelKey);
 		return null;
 	}
 
@@ -199,13 +265,19 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(ThisExpr thisExpr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		String registerKey= env.getRegisterKey();
+		env.writeLine("Move this,"+registerKey );
+	
+		return new IRVisitResult(env.getCurrentClassType(),registerKey);
 	}
 
 	public IRVisitResult visit(InstantExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		TypeEntry classType= env.getTypeEntry(expr.className);  
+		String registerKey= env.getRegisterKey();
+		int typeSize= (classType.fieldMap.size()+1)*4;
+		env.writeLine("Library __allocateObject("+typeSize+"),"+registerKey);
+		env.writeLine("MoveField "+classType.getUniqueName()+","+registerKey+".0");
+		return new IRVisitResult(classType,registerKey);
 	}
 
 	public IRVisitResult visit(VarExpr expr, IREnvironment env) {
@@ -234,8 +306,8 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(StringExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		String stringLitralKey=env.getStringLitralKey(expr.value);		 
+		return new IRVisitResult(env.getTypeEntry(Environment.STRING),stringLitralKey);
 	}
 
 	public IRVisitResult visit(BooleanExpr expr, IREnvironment env) {

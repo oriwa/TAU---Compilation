@@ -9,7 +9,9 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 
 public class IREnvironment {
 	
@@ -50,7 +52,7 @@ public class IREnvironment {
 	private MethodSymbolEntry currentMethodType;
 	private Class currentClass;
 	private Method currentMethod;
-	private int loopDepth;
+	private Stack<WhileLabels> loopStack;
 	private int mainMethodNumber=0;
 
 	private int registerSerial=0;
@@ -58,6 +60,7 @@ public class IREnvironment {
 	
 	
 	public IREnvironment(){
+		loopStack=new Stack<WhileLabels>(); 
 		initPrimitiveTypeEntrys();
 		TypeEntry nullEntry = new TypeEntry(typeTable.size(), NULL);
 		nullEntry.setPrimitive(false);
@@ -148,16 +151,16 @@ public class IREnvironment {
 		this.currentMethod = currentMethod;
 	}
 
-	public boolean getIsInLoop() {
-		return loopDepth > 0;
+	public WhileLabels getCurrentWhileLabels() {
+		return loopStack.peek();
 	}
 
-	public void setIsInLoop(boolean isInLoop) {
-		if (isInLoop)
-			loopDepth++;
-		else
-			loopDepth--;
-
+	public void pushWhileLabels(String whileLabelKey, String stopLabelKey) {
+		loopStack.push(new WhileLabels(whileLabelKey,stopLabelKey));
+	}
+	
+	public void popWhileLabels() {
+		loopStack.pop();
 	}
 
 	public int getMainMethodNumber() {

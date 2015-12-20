@@ -57,6 +57,10 @@ public class TypeEntry {
 		return entryName+arrBrackets;
 	}
 	
+	public String getUniqueName() { 
+		return uniqueName;	
+	}
+	
 	public String getTypeName() {
 		return entryName;
 	}
