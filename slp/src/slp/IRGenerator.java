@@ -275,7 +275,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			IRVisitResult exprResult= virtualCall.expr.accept(this, env);
 			expValue=exprResult.value;
 			exprType =exprResult.type;
-			env.writeCode("Library __checkNullRef("+exprType+"),"+IREnvironment.RDUMMY);
+			env.writeCode("Library __checkNullRef("+expValue+"),"+IREnvironment.RDUMMY);
 		}
 		int dispatchVectorIndex= exprType.dispatchVectorMap.get(virtualCall.name);
 		MethodSymbolEntry m = env.getMethodInClass(virtualCall.name, false, exprType);
