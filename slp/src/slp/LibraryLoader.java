@@ -9,6 +9,14 @@ public class LibraryLoader {
 		env.addDclrs(libraryClss);
 	}
 	
+	public void load(IREnvironment env){
+		Class libraryClss=GetLibraryClass();
+		env.addTypeEntry(libraryClss);
+		env.addDclrs(libraryClss);
+	}
+	
+	
+	
 	
 	public Class GetLibraryClass()
 	{

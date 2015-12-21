@@ -1,6 +1,9 @@
 package slp;
 
 import java.io.IOException;
+import java.util.List;
+
+import slp.SymbolEntry.ReferenceRole;
 
 public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitResult> {
 	
@@ -34,13 +37,18 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 	
 	private void initTypeTable(ClassList classList, IREnvironment env)  {
-		 
+		initLibrary(env);
 		for (Class clss : classList.classes) {
 			env.addTypeEntry(clss);
 		}
 		for(Class clss:classList.classes){
 			env.addDclrs(clss);
 		}
+	}
+	
+	private void initLibrary(IREnvironment env) {
+		LibraryLoader loader=new LibraryLoader();
+		loader.load(env);	
 	}
 
 	public IRVisitResult visit(ClassList classes, IREnvironment env) {
@@ -120,8 +128,10 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(Type type, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		TypeEntry typeEntry=env.getTypeEntry(type.name); 
+		if(type.array_dimension!=0)
+			typeEntry=ArrayTypeEntry.makeArrayTypeEntry(typeEntry,type.array_dimension); 
+		return new IRVisitResult(typeEntry,null);
 	}
 
 	public IRVisitResult visit(StmtList stmts, IREnvironment env) {
@@ -140,15 +150,16 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	public IRVisitResult visit(AssignStmt stmt, IREnvironment env) {
 
 		IRVisitResult rhsResult=stmt.rhs.accept(this, env);
-		String rhsRegisterKey = env.getRegisterKey();
-		env.writeCode(rhsResult.moveInstruction+" "+rhsResult.value+","+rhsRegisterKey);
+
+		env.setIsLeftHandSideExpr(true);
 		IRVisitResult locationResult=stmt.location.accept(this, env);
-		env.writeCode(locationResult.moveInstruction+" "+rhsRegisterKey+","+locationResult.value);
+		env.setIsLeftHandSideExpr(false);
+		env.writeInstruction(locationResult.moveInstruction, rhsResult.value, locationResult.value);
 		return null;
 	}
 
 	public IRVisitResult visit(CallStmt callStmt, IREnvironment env) {
-		// TODO Auto-generated method stub
+		callStmt.call.accept(this,env);
 		return null;
 	}
 
@@ -165,20 +176,20 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(IfStmt ifStmt, IREnvironment env) {
-		IRVisitResult exprResult= ifStmt.expr.accept(this,env); 
+		ifStmt.expr.accept(this,env); 
 		
 		boolean createScope = !(ifStmt.ifStmt instanceof StmtList);
 		if (createScope)
 			env.enterScope();
 		String ifLabelKey = env.getLabelKey();
-		env.writeCode("JumpFalse "+ifLabelKey+","+exprResult.value);
+		env.writeCode("JumpFalse "+ifLabelKey);
 		ifStmt.ifStmt.accept(this,env); 		
 		if (createScope)
 			env.leaveScope();
 		if(ifStmt.elseStmt!=null)
 		{
 			String elseLabelKey = env.getLabelKey();
-			env.writeCode("Jump "+elseLabelKey+","+IREnvironment.RDUMMY);
+			env.writeCode("Jump "+elseLabelKey);
 			env.writeLabel(ifLabelKey);
 			createScope = !(ifStmt.elseStmt instanceof StmtList);
 			if (createScope)
@@ -205,10 +216,10 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		String stopLabelKey = env.getLabelKey();
 		
 		env.writeLabel(whileLabelKey);
-		IRVisitResult whileExprResult =whileStmt.expr.accept(this,env);  
+		whileStmt.expr.accept(this,env);  
 		
 
-		env.writeCode("JumpFalse "+stopLabelKey+","+whileExprResult.value);
+		env.writeCode("JumpFalse "+stopLabelKey);
 		
 		boolean createScope = !(whileStmt.stmt instanceof StmtList);
 		if (createScope)
@@ -216,7 +227,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		env.pushWhileLabels(whileLabelKey, stopLabelKey);
 		whileStmt.stmt.accept(this,env);  
 		
-		env.writeCode("Jump "+whileLabelKey+","+IREnvironment.RDUMMY);
+		env.writeCode("Jump "+whileLabelKey);
 		env.writeLabel(stopLabelKey);
 		
 		env.popWhileLabels();
@@ -229,29 +240,106 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 
 	public IRVisitResult visit(BreakStmt breakStmt, IREnvironment env) {
 		WhileLabels whileLabels=env.getCurrentWhileLabels();
-		env.writeCode("Jump "+whileLabels.stopLabelKey+","+IREnvironment.RDUMMY);
+		env.writeCode("Jump "+whileLabels.stopLabelKey);
 		return null;
 	}
 
 	public IRVisitResult visit(ContinueStmt continueStmt, IREnvironment env) {
 		WhileLabels whileLabels=env.getCurrentWhileLabels();
-		env.writeCode("Jump "+whileLabels.whileLabelKey+","+IREnvironment.RDUMMY);
+		env.writeCode("Jump "+whileLabels.whileLabelKey);
 		return null;
 	}
 
 	public IRVisitResult visit(DeclarationStmt declarationStmt, IREnvironment env) {
-		// TODO Auto-generated method stub
+		IRVisitResult dclrType =declarationStmt.type.accept(this,env); 
+		SymbolEntry  symbolEntry =env.addDeclaration(dclrType.type,declarationStmt.name,declarationStmt.line);
+		if(declarationStmt.value!=null)
+		{
+			IRVisitResult valueResult = declarationStmt.value.accept(this,env);
+			env.writeInstruction("Move", valueResult.value, symbolEntry.uniqueName);
+		} 
 		return null;
 	}
 
 	public IRVisitResult visit(VirtualCall virtualCall, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		TypeEntry exprType;
+		Object expValue;
+		if (virtualCall.expr == null)
+		{
+			exprType = env.getCurrentClassType();
+			String thisReg=getThisReg(env);
+			expValue=thisReg;
+		}
+		else 
+		{
+			IRVisitResult exprResult= virtualCall.expr.accept(this, env);
+			expValue=exprResult.value;
+			exprType =exprResult.type;
+			env.writeCode("Library __checkNullRef("+exprType+"),"+IREnvironment.RDUMMY);
+		}
+		int dispatchVectorIndex= exprType.dispatchVectorMap.get(virtualCall.name);
+		MethodSymbolEntry m = env.getMethodInClass(virtualCall.name, false, exprType);
+		String methodCallArgs = prepareMethodCallArgs(m.getMethodArgsNames(), virtualCall.callArgs.expressions, env);
+
+		String registerKey=IREnvironment.RDUMMY;
+		TypeEntry type = m.getEntryTypeID();
+		if (type != null){	
+			int returnTypeDimensions = type.getTypeDimension();
+			if(returnTypeDimensions != 0)
+				type = ArrayTypeEntry.makeArrayTypeEntry(type, returnTypeDimensions);
+		}
+		else
+		{
+			registerKey= env.getRegisterKey();	
+		}
+ 
+		String op1= expValue+"."+dispatchVectorIndex+"(this="+expValue;
+		if(methodCallArgs.equals(""))
+			op1+=")";
+		else
+			op1+=","+methodCallArgs+")";
+		env.writeInstruction("VirtualCall",op1, registerKey);
+		
+		return new IRVisitResult(type,registerKey);
+	}
+
+	private String prepareMethodCallArgs(List<String> methodArgs,List<Expr> expressions, IREnvironment env) {
+		
+		String methodCallArgs="";
+		int count=0;
+		for (String methodArg : methodArgs) {
+			IRVisitResult exrResult=expressions.get(count).accept(this, env);
+			methodCallArgs+=methodArg+"="+exrResult.value;
+			count++;
+			if(count!=expressions.size())
+				methodCallArgs+=",";
+		}
+		return methodCallArgs;
+
 	}
 
 	public IRVisitResult visit(StaticCall staticCall, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		String exprTypeName = staticCall.className;
+		TypeEntry exprType = env.getTypeEntry(exprTypeName);
+	 
+		MethodSymbolEntry m = env.getMethodInClass(staticCall.name, true, exprType);
+
+		String methodCallArgs = prepareMethodCallArgs(m.getMethodArgsNames(), staticCall.callArgs.expressions, env);
+		 
+		String registerKey=IREnvironment.RDUMMY;
+		TypeEntry type = m.getEntryTypeID();
+		if (type != null){	
+			int returnTypeDimensions = type.getTypeDimension();
+			if(returnTypeDimensions != 0)
+				type = ArrayTypeEntry.makeArrayTypeEntry(type, returnTypeDimensions);
+		}
+		else
+		{
+			registerKey= env.getRegisterKey();	
+		}
+		String op1= m.uniqueName+"("+methodCallArgs+")";
+		env.writeInstruction("StaticCall",op1, registerKey);
+		return new IRVisitResult(type,registerKey);
 	}
 
 	public IRVisitResult visit(ExprList expressions, IREnvironment env) {
@@ -269,10 +357,15 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(ThisExpr thisExpr, IREnvironment env) {
-		String registerKey= env.getRegisterKey();
-		env.writeCode("Move this,"+registerKey );
+		String registerKey = getThisReg(env);
 	
 		return new IRVisitResult(env.getCurrentClassType(),registerKey);
+	}
+
+	private String getThisReg(IREnvironment env) {
+		String registerKey= env.getRegisterKey();	
+		env.writeInstruction("Move", "this", registerKey);
+		return registerKey;
 	}
 
 	public IRVisitResult visit(InstantExpr expr, IREnvironment env) {
@@ -280,16 +373,67 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		String registerKey= env.getRegisterKey();
 		int typeSize= (classType.fieldMap.size()+1)*4;
 		env.writeCode("Library __allocateObject("+typeSize+"),"+registerKey);
-		env.writeCode("MoveField "+classType.getUniqueName()+","+registerKey+".0");
+		env.writeInstruction("MoveField", classType.getUniqueName(), registerKey+".0");
 		return new IRVisitResult(classType,registerKey);
 	}
 
 	public IRVisitResult visit(VarExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+
+		boolean isLeftHandSideExpr=env.isLeftHandSideExpr();
+		env.setIsLeftHandSideExpr(false);
+		IRVisitResult visitResult=new IRVisitResult();
+		if(expr.target_expr!=null)
+		{
+			IRVisitResult targetResult=expr.target_expr.accept(this, env);
+			SymbolEntry symbolEntry=null;
+			if(targetResult.type!=null)
+			{
+				SymbolTable symbolTable=targetResult.type.getScope(false);
+				symbolEntry=symbolTable.getEntryByName(expr.name);
+				env.writeCode("Library __checkNullRef("+targetResult.value+"),"+IREnvironment.RDUMMY);
+				moveField(expr, env, isLeftHandSideExpr, visitResult, targetResult.type,targetResult.value);
+
+			}			
+			visitResult.type=symbolEntry.getEntryTypeID();
+		}
+		else
+		{ 
+			SymbolEntry symbolEntry=env.getSymbolEntry(expr.name);
+			if(symbolEntry.role!=ReferenceRole.FIELD)
+			{
+				visitResult.type=symbolEntry.getEntryTypeID();
+				visitResult.value=symbolEntry.uniqueName;
+			}
+			else
+			{
+				TypeEntry type =env.getCurrentClassType();
+				String thisRegisterKey = getThisReg(env);
+				moveField(expr, env, isLeftHandSideExpr, visitResult, type,thisRegisterKey);
+			}
+		}
+		return visitResult;
+	}
+
+	private void moveField(VarExpr expr, IREnvironment env,boolean isLeftHandSideExpr, IRVisitResult visitResult,TypeEntry type, Object typeRegisterKey) {
+		Integer fieldIndex= type.fieldMap.get(expr.name);
+		if(!isLeftHandSideExpr)
+		{ 
+			String registerKey= env.getRegisterKey();
+			env.writeInstruction("MoveField",typeRegisterKey+"."+fieldIndex,registerKey);
+			visitResult.value= registerKey;
+		}
+		else
+		{ 
+			visitResult.value= typeRegisterKey+"."+fieldIndex;
+			visitResult.moveInstruction="MoveField";
+		}
 	}
 
 	public IRVisitResult visit(ArrayVarExpr expr, IREnvironment env) {
+		
+		boolean isLeftHandSideExpr=env.isLeftHandSideExpr();
+		env.setIsLeftHandSideExpr(false);
+		
 		IRVisitResult targetExprResult= expr.target_expr.accept(this, env); 
 		IRVisitResult indexExprResult= expr.index_expr.accept(this, env); 		
 		TypeEntry type;
@@ -300,8 +444,18 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 
 		env.writeCode("Library __checkNullRef("+targetExprResult.value+"),"+IREnvironment.RDUMMY);
 		env.writeCode("Library __checkArrayAccess("+targetExprResult.value+indexExprResult.value+"),"+IREnvironment.RDUMMY);
-		IRVisitResult irVisitResult=new IRVisitResult(type,targetExprResult.value+"["+indexExprResult.value+"]");
-		irVisitResult.moveInstruction="MoveArray";
+		IRVisitResult irVisitResult=null;
+		if(!isLeftHandSideExpr)
+		{ 
+			String registerKey= env.getRegisterKey();
+			env.writeInstruction("MoveArray",targetExprResult.value+"["+indexExprResult.value+"]",registerKey);
+			irVisitResult=new IRVisitResult(type,registerKey);
+		}
+		else
+		{
+			irVisitResult=new IRVisitResult(type,targetExprResult.value+"["+indexExprResult.value+"]");
+			irVisitResult.moveInstruction="MoveArray";
+		}
 		return irVisitResult;
 	}
 
@@ -310,7 +464,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		IRVisitResult targetExprResult= expr.expr.accept(this, env);
 		String registerKey= env.getRegisterKey();
 		env.writeCode("Library __checkNullRef("+targetExprResult.value+"),"+IREnvironment.RDUMMY);
-		env.writeCode("ArrayLength "+targetExprResult.value+","+registerKey);
+		env.writeInstruction("ArrayLength",targetExprResult.value,registerKey);
 		return new IRVisitResult(env.getTypeEntry(Environment.INT),registerKey);
 	}
 

@@ -1,5 +1,6 @@
 package slp;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -20,7 +21,8 @@ public class TypeEntry {
 	private Map<String,SymbolEntry> instanceScope;
 
 	public Map<String,Integer> fieldMap;
-	public Map<String,Integer> dispatchVector;
+	public Map<String,Integer> dispatchVectorMap;
+	public ArrayList<String> dispatchVector;
 	
 	
 	public TypeEntry(int entryId,String entryName){
@@ -43,7 +45,8 @@ public class TypeEntry {
 		this.instanceScope=new HashMap<String,SymbolEntry>();	
 		
 		this.fieldMap=new HashMap<String,Integer>();
-		this.dispatchVector=new HashMap<String,Integer>();
+		this.dispatchVectorMap=new HashMap<String,Integer>();
+		dispatchVector=new ArrayList<String>();
 	}
 	
 
@@ -100,7 +103,9 @@ public class TypeEntry {
 		staticScope.putAll(staticParentScope);
 		for (String key : instanceParentScope.keySet()) {
 			if(!instanceScope.containsKey(key))
+			{ 
 				instanceScope.put(key, instanceParentScope.get(key));
+			}
 		}
 	}
 	
@@ -137,11 +142,12 @@ public class TypeEntry {
 		for (SymbolEntry entry : instanceScope.values()) {
 			if(entry instanceof MethodSymbolEntry)
 			{
-				dispatchVector.put(entry.uniqueName, dispatchVector.size());
+				dispatchVector.add(entry.uniqueName);
+				dispatchVectorMap.put(entry.getEntryName(), dispatchVector.size());
 			}
 			else
 			{
-				fieldMap.put(entry.uniqueName, fieldMap.size());
+				fieldMap.put(entry.getEntryName(), fieldMap.size());
 			}
 			
 		}
@@ -151,12 +157,11 @@ public class TypeEntry {
 	public String getDispatchVectorString()
 	{
 		String dispatchVectorString=uniqueName+": [";
-		Set<String> keySet=  dispatchVector.keySet();
 		int count=0;
-		for (String key : keySet) {		
+		for (String key : dispatchVector) {		
 			dispatchVectorString+=key;
 			count++;
-			if(count!=keySet.size())
+			if(count!=dispatchVector.size())
 				dispatchVectorString+=",";
 		}
 		dispatchVectorString+="]";

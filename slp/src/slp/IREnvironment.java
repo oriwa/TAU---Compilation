@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
+import slp.SymbolEntry.ReferenceRole;
+
 public class IREnvironment {
 	
 	public static final String INT="int";
@@ -54,6 +56,7 @@ public class IREnvironment {
 	private Method currentMethod;
 	private Stack<WhileLabels> loopStack;
 	private int mainMethodNumber=0;
+	private boolean isLeftHandSideExpr=false;
 
 	private int registerSerial=0;
 	private int labelSerial=0;
@@ -91,12 +94,16 @@ public class IREnvironment {
 
 	public void addToEnv(Formals formals) {
 			SymbolEntry symbolEntry =addDeclaration(getType(formals.type),formals.name, formals.line);
-			symbolEntry.uniqueName="p"+formals.name+"name";
+			symbolEntry.uniqueName=getArgUniqueName(formals.name);
 			symbolEntry.setIsInitialized(true);
 			symbolEntry.setIsArg();
 	}
 	
 	
+	public String getArgUniqueName(String name)
+	{
+		return "p"+name+"name";
+	}
  
 
 
@@ -238,7 +245,7 @@ public class IREnvironment {
 				for(Formals formal:method.formalsList.formals){			
 
 					tmpArgType=  getType(formal.type);
-					methodSymbol.addToArgs(tmpArgType);
+					methodSymbol.addToArgs(tmpArgType,getArgUniqueName(formal.name));
 				}
 				clssType.addToScopes(methodSymbol, method.isStatic);
 			}else{//dclr is Field
@@ -277,6 +284,7 @@ public class IREnvironment {
 	private void addField(String name,SymbolTable instanceScope,TypeEntry type,TypeEntry clssType, int line){
 		SymbolEntry fieldSymbol =new SymbolEntry(name, type, line);
 		fieldSymbol.uniqueName="f"+name+"name";
+		fieldSymbol.role=ReferenceRole.FIELD;
 		fieldSymbol.setIsInitialized(true);	
 		clssType.addToScopes(fieldSymbol, false);
 	}
@@ -294,6 +302,7 @@ public class IREnvironment {
 	
 	public String getRegisterKey()
 	{
+		registerSerial++;
 		return "R"+registerSerial;
 	}
 	
@@ -333,6 +342,11 @@ public class IREnvironment {
 	public void writeLabel(String line)
 	{
 		writeLine( line+":");
+	}
+	
+	public void writeInstruction(String instruction,Object op1,Object op2 )
+	{ 
+		writeCode(instruction+" "+op1+","+op2);
 	}
 		
 	public void writeCode(String line)
@@ -379,6 +393,16 @@ public class IREnvironment {
 		bw.write("##############################");
 		bw.newLine();
 		bw.newLine();
+	}
+
+
+	public boolean isLeftHandSideExpr() {
+		return isLeftHandSideExpr;
+	}
+
+
+	public void setIsLeftHandSideExpr(boolean isLeftHandSideExpr) {
+		this.isLeftHandSideExpr = isLeftHandSideExpr;
 	}
 	
 	
