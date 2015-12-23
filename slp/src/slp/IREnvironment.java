@@ -248,6 +248,8 @@ public class IREnvironment {
 					methodSymbol.addToArgs(tmpArgType,getArgUniqueName(formal.name));
 				}
 				clssType.addToScopes(methodSymbol, method.isStatic);
+				if(!method.isStatic)
+					clssType.addToDispatchVector(methodSymbol);
 			}else{//dclr is Field
 				Field field=(Field)dclr;
 
@@ -256,16 +258,13 @@ public class IREnvironment {
 				addField(field.name, instanceScope, fieldType,clssType, field.line);
 				
 				for(String id : field.extraIDs.ids){
-
 					addField(id, instanceScope, fieldType,clssType, field.line);
-
-
 				}
 				
 			}
 					
 		}
-		clssType.InitDispatchVector();
+		clssType.InitDispatchVectorAndFieldsMapping();
 		dispatchVectors.add(clssType.getDispatchVectorString());
 
 	}
@@ -286,6 +285,7 @@ public class IREnvironment {
 		fieldSymbol.uniqueName="f"+name+"name";
 		fieldSymbol.role=ReferenceRole.FIELD;
 		fieldSymbol.setIsInitialized(true);	
+		clssType.addToFields(fieldSymbol);
 		clssType.addToScopes(fieldSymbol, false);
 	}
 	

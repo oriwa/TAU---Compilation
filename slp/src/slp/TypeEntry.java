@@ -22,7 +22,8 @@ public class TypeEntry {
 
 	public Map<String,Integer> fieldMap;
 	public Map<String,Integer> dispatchVectorMap;
-	public ArrayList<String> dispatchVector;
+	public ArrayList<MethodSymbolEntry> dispatchVector; 
+	public ArrayList<SymbolEntry> fields; 
 	
 	
 	public TypeEntry(int entryId,String entryName){
@@ -46,7 +47,8 @@ public class TypeEntry {
 		
 		this.fieldMap=new HashMap<String,Integer>();
 		this.dispatchVectorMap=new HashMap<String,Integer>();
-		dispatchVector=new ArrayList<String>();
+		this.dispatchVector=new ArrayList<MethodSymbolEntry>(); 
+		this.fields=new ArrayList<SymbolEntry>(); 
 	}
 	
 
@@ -137,29 +139,46 @@ public class TypeEntry {
 		return  staticScope.containsKey(name)||instanceScope.containsKey(name);
 	}
 	
-	public void InitDispatchVector()
+	public void InitDispatchVectorAndFieldsMapping()
 	{
-		for (SymbolEntry entry : instanceScope.values()) {
-			if(entry instanceof MethodSymbolEntry)
-			{
-				dispatchVector.add(entry.uniqueName);
-				dispatchVectorMap.put(entry.getEntryName(), dispatchVector.size());
-			}
-			else
-			{
-				fieldMap.put(entry.getEntryName(), fieldMap.size());
-			}
-			
+		if(extending!=null)
+		{
+			for (int i = extending.dispatchVector.size()-1; i > -1; i--) {
+				MethodSymbolEntry entry=extending.dispatchVector.get(i);
+				if(entry==instanceScope.get(entry.getEntryName()))
+				{
+					dispatchVector.add(0, entry);
+				}	
+			} 
+			for (int i = extending.fields.size()-1; i > -1; i--) {
+				SymbolEntry entry=extending.fields.get(i);
+				fields.add(0, entry);
+			}  
 		}
-		
+		for (SymbolEntry entry : dispatchVector) {
+			dispatchVectorMap.put(entry.getEntryName(), dispatchVectorMap.size());	
+		}
+		for (SymbolEntry entry : fields) {
+			fieldMap.put(entry.getEntryName(), fieldMap.size());
+		} 
+	}
+	
+	public void addToDispatchVector(MethodSymbolEntry entry)
+	{ 
+		dispatchVector.add(entry);
+	}
+	
+	public void addToFields(SymbolEntry entry)
+	{ 
+		fields.add(entry);
 	}
 	
 	public String getDispatchVectorString()
 	{
 		String dispatchVectorString=uniqueName+": [";
 		int count=0;
-		for (String key : dispatchVector) {		
-			dispatchVectorString+=key;
+		for (SymbolEntry entry : dispatchVector) {		
+			dispatchVectorString+=entry.uniqueName;
 			count++;
 			if(count!=dispatchVector.size())
 				dispatchVectorString+=",";
