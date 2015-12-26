@@ -339,8 +339,15 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		{
 			registerKey= env.getRegisterKey();	
 		}
-		String op1= m.uniqueName+"("+methodCallArgs+")";
-		env.writeInstruction("StaticCall",op1, registerKey);
+		
+		String op1 = m.uniqueName+"("+methodCallArgs+")";
+		String instruction = "StaticCall";
+		if (Validator.isLibraryClass(staticCall.className)){
+			op1 = "__" + m.getEntryName() + "("+methodCallArgs+")";
+			instruction = "Library";
+		}
+		env.writeInstruction(instruction,op1, registerKey);
+
 		return new IRVisitResult(type,registerKey);
 	}
 

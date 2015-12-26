@@ -265,7 +265,8 @@ public class IREnvironment {
 					
 		}
 		clssType.InitDispatchVectorAndFieldsMapping();
-		dispatchVectors.add(clssType.getDispatchVectorString());
+		if (!Validator.isLibraryClass(clssType.getEntryName()))
+			dispatchVectors.add(clssType.getDispatchVectorString());
 
 	}
 	private void extendClass(Class clss, TypeEntry clssType) {
