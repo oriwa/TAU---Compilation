@@ -287,9 +287,6 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			int returnTypeDimensions = type.getTypeDimension();
 			if(returnTypeDimensions != 0)
 				type = ArrayTypeEntry.makeArrayTypeEntry(type, returnTypeDimensions);
-		}
-		else
-		{
 			registerKey= env.getRegisterKey();	
 		}
  
@@ -332,9 +329,6 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			int returnTypeDimensions = type.getTypeDimension();
 			if(returnTypeDimensions != 0)
 				type = ArrayTypeEntry.makeArrayTypeEntry(type, returnTypeDimensions);
-		}
-		else
-		{
 			registerKey= env.getRegisterKey();	
 		}
 		String op1= m.uniqueName+"("+methodCallArgs+")";
@@ -401,8 +395,18 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			SymbolEntry symbolEntry=env.getSymbolEntry(expr.name);
 			if(symbolEntry.role!=ReferenceRole.FIELD)
 			{
+
 				visitResult.type=symbolEntry.getEntryTypeID();
-				visitResult.value=symbolEntry.uniqueName;
+				if(!isLeftHandSideExpr)
+				{ 
+					String registerKey= env.getRegisterKey();
+					env.writeInstruction("Move", symbolEntry.uniqueName,registerKey);
+					visitResult.value=registerKey;
+				}
+				else
+				{				
+					visitResult.value=symbolEntry.uniqueName;
+				}
 			}
 			else
 			{
@@ -491,8 +495,9 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(NullExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		String registerKey= env.getRegisterKey();
+		env.writeInstruction("Move", 0,registerKey);
+		return new IRVisitResult(env.getTypeEntry(IREnvironment.NULL),registerKey);
 	}
 
 	public IRVisitResult visit(UnaryOpExpr expr, IREnvironment env) {
