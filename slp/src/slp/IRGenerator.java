@@ -560,27 +560,32 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		switch (expr.op){
 		case EQUAL:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			writeConditionalBool(registerKey,"JumpFalse",cmprLabelKey, lhsResult.value,env);
+			//no compare!
+			writeConditionalBool(registerKey,"JumpFalse",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			
 			break;
 		case NEQUAL:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, lhsResult.value,env);
+			
+			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, lhsResult.value,lhsResult.value,env);
 			break;
 		case GTE:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			writeConditionalBool(registerKey,"JumpGE",cmprLabelKey, lhsResult.value,env);
+			
+			writeConditionalBool(registerKey,"JumpGE",cmprLabelKey, lhsResult.value,lhsResult.value,env);
 			break;
 		case LTE:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			writeConditionalBool(registerKey,"JumpLE",cmprLabelKey, lhsResult.value,env);
+			writeConditionalBool(registerKey,"JumpLE",cmprLabelKey, lhsResult.value,lhsResult.value,env);
 			break;
 		case GT:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			writeConditionalBool(registerKey,"JumpG",cmprLabelKey, lhsResult.value,env);
+			
+			writeConditionalBool(registerKey,"JumpG",cmprLabelKey, lhsResult.value,lhsResult.value,env);
 			break;
 		case LT:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			writeConditionalBool(registerKey,"JumpL",cmprLabelKey, lhsResult.value,env);
+			writeConditionalBool(registerKey,"JumpL",cmprLabelKey, lhsResult.value,lhsResult.value,env);
 			break;
 		case LOR:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
@@ -607,7 +612,6 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			//env.writeCode("Library __checkZero("+lhsResult+"),"+IREnvironment.RDUMMY);
 			//TODO: implement
 			env.writeInstruction("Move", rhsResult.value,registerKey);
->>>>>>> 5d6408b92ad50d56f9706eadf3cb0baf38d9baae
 			env.writeInstruction("Div", lhsResult.value,registerKey);
 			
 			break;
