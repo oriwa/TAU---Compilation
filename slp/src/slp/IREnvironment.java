@@ -25,6 +25,8 @@ public class IREnvironment {
 	public static final String RDUMMY="RDummy";
 	
 	private static final String[] PRIMITIVE_TYPES={INT,BOOLEAN,STRING};
+
+	public static final String OUTPUT_FILE="output.lir";
 	
 	
 	/** Maps the names of variables to integer values.
@@ -361,7 +363,7 @@ public class IREnvironment {
 	
 	public void commitIR() throws IOException
 	{
-		File fout = new File("output.lr");
+		File fout = new File(OUTPUT_FILE);
 		FileOutputStream fos = new FileOutputStream(fout);
 	 
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
