@@ -280,7 +280,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		int dispatchVectorIndex= exprType.dispatchVectorMap.get(virtualCall.name);
 		MethodSymbolEntry m = env.getMethodInClass(virtualCall.name, false, exprType);
 
-		String methodCallArgs = prepareMethodCallArgs(m.getMethodArgsNames(), virtualCall.callArgs.expressions, env);
+		String methodCallArgs = prepareMethodCallArgs(m.getMethodArgsNames(), virtualCall.callArgs.expressions, false, env);
 
 		String registerKey=IREnvironment.RDUMMY;
 		TypeEntry type = m.getEntryTypeID();
@@ -302,13 +302,15 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		return new IRVisitResult(type,registerKey);
 	}
 
-	private String prepareMethodCallArgs(List<String> methodArgs,List<Expr> expressions, IREnvironment env) {
+	private String prepareMethodCallArgs(List<String> methodArgs,List<Expr> expressions, boolean isLibraryClass, IREnvironment env) {
 		
 		String methodCallArgs="";
 		int count=0;
 		for (String methodArg : methodArgs) {
 			IRVisitResult exrResult=expressions.get(count).accept(this, env);
-			methodCallArgs+=methodArg+"="+exrResult.value;
+			if (!isLibraryClass)
+				methodCallArgs +=methodArg + "=";
+			methodCallArgs+=exrResult.value;
 			count++;
 			if(count!=expressions.size())
 				methodCallArgs+=",";
@@ -320,10 +322,11 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	public IRVisitResult visit(StaticCall staticCall, IREnvironment env) {
 		String exprTypeName = staticCall.className;
 		TypeEntry exprType = env.getTypeEntry(exprTypeName);
-	 
+		boolean isLibraryClass = Validator.isLibraryClass(exprTypeName);
+		
 		MethodSymbolEntry m = env.getMethodInClass(staticCall.name, true, exprType);
 
-		String methodCallArgs = prepareMethodCallArgs(m.getMethodArgsNames(), staticCall.callArgs.expressions, env);
+		String methodCallArgs = prepareMethodCallArgs(m.getMethodArgsNames(), staticCall.callArgs.expressions, isLibraryClass, env);
 		 
 		String registerKey=IREnvironment.RDUMMY;
 		TypeEntry type = m.getEntryTypeID();
@@ -336,7 +339,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		
 		String op1 = m.uniqueName+"("+methodCallArgs+")";
 		String instruction = "StaticCall";
-		if (Validator.isLibraryClass(staticCall.className)){
+		if (isLibraryClass){
 			op1 = "__" + m.getEntryName() + "("+methodCallArgs+")";
 			instruction = "Library";
 		}
