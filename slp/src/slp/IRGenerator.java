@@ -176,12 +176,13 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(IfStmt ifStmt, IREnvironment env) {
-		ifStmt.expr.accept(this,env); 
+		IRVisitResult exprResult =ifStmt.expr.accept(this,env); 
 		
 		boolean createScope = !(ifStmt.ifStmt instanceof StmtList);
 		if (createScope)
 			env.enterScope();
 		String ifLabelKey = env.getLabelKey();
+		env.writeInstruction("Compare", 1,exprResult.value);
 		env.writeCode("JumpFalse "+ifLabelKey);
 		ifStmt.ifStmt.accept(this,env); 		
 		if (createScope)
@@ -216,9 +217,10 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		String stopLabelKey = env.getLabelKey();
 		
 		env.writeLabel(whileLabelKey);
-		whileStmt.expr.accept(this,env);  
+		IRVisitResult exprResult =whileStmt.expr.accept(this,env);  
 		
 
+		env.writeInstruction("Compare", 1,exprResult.value);
 		env.writeCode("JumpFalse "+stopLabelKey);
 		
 		boolean createScope = !(whileStmt.stmt instanceof StmtList);
@@ -280,7 +282,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		int dispatchVectorIndex= exprType.dispatchVectorMap.get(virtualCall.name);
 		MethodSymbolEntry m = env.getMethodInClass(virtualCall.name, false, exprType);
 
-		String methodCallArgs = prepareMethodCallArgs(m.getMethodArgsNames(), virtualCall.callArgs.expressions, env);
+		String methodCallArgs = prepareMethodCallArgs(m.getMethodArgsNames(), virtualCall.callArgs.expressions, false, env);
 
 		String registerKey=IREnvironment.RDUMMY;
 		TypeEntry type = m.getEntryTypeID();
@@ -302,13 +304,15 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		return new IRVisitResult(type,registerKey);
 	}
 
-	private String prepareMethodCallArgs(List<String> methodArgs,List<Expr> expressions, IREnvironment env) {
+	private String prepareMethodCallArgs(List<String> methodArgs,List<Expr> expressions, boolean isLibraryClass, IREnvironment env) {
 		
 		String methodCallArgs="";
 		int count=0;
 		for (String methodArg : methodArgs) {
 			IRVisitResult exrResult=expressions.get(count).accept(this, env);
-			methodCallArgs+=methodArg+"="+exrResult.value;
+			if (!isLibraryClass)
+				methodCallArgs +=methodArg + "=";
+			methodCallArgs+=exrResult.value;
 			count++;
 			if(count!=expressions.size())
 				methodCallArgs+=",";
@@ -320,10 +324,11 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	public IRVisitResult visit(StaticCall staticCall, IREnvironment env) {
 		String exprTypeName = staticCall.className;
 		TypeEntry exprType = env.getTypeEntry(exprTypeName);
-	 
+		boolean isLibraryClass = Validator.isLibraryClass(exprTypeName);
+		
 		MethodSymbolEntry m = env.getMethodInClass(staticCall.name, true, exprType);
 
-		String methodCallArgs = prepareMethodCallArgs(m.getMethodArgsNames(), staticCall.callArgs.expressions, env);
+		String methodCallArgs = prepareMethodCallArgs(m.getMethodArgsNames(), staticCall.callArgs.expressions, isLibraryClass, env);
 		 
 		String registerKey=IREnvironment.RDUMMY;
 		TypeEntry type = m.getEntryTypeID();
@@ -336,7 +341,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		
 		String op1 = m.uniqueName+"("+methodCallArgs+")";
 		String instruction = "StaticCall";
-		if (Validator.isLibraryClass(staticCall.className)){
+		if (isLibraryClass){
 			op1 = "__" + m.getEntryName() + "("+methodCallArgs+")";
 			instruction = "Library";
 		}
@@ -402,10 +407,19 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		else
 		{ 
 			SymbolEntry symbolEntry=env.getSymbolEntry(expr.name);
+			visitResult.type=symbolEntry.getEntryTypeID();
 			if(symbolEntry.role!=ReferenceRole.FIELD)
 			{
-				visitResult.type=symbolEntry.getEntryTypeID();
-				visitResult.value=symbolEntry.uniqueName;
+				if(!isLeftHandSideExpr)
+				{ 
+					String registerKey= env.getRegisterKey();
+					env.writeInstruction("Move", symbolEntry.uniqueName,registerKey);
+					visitResult.value=registerKey;
+				}
+				else
+				{				
+					visitResult.value=symbolEntry.uniqueName;
+				}
 			}
 			else
 			{
@@ -446,7 +460,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			type=ArrayTypeEntry.makeArrayTypeEntry(targetExprResult.type,targetExprResult.type.getTypeDimension()-1);
 
 		env.writeCode("Library __checkNullRef("+targetExprResult.value+"),"+IREnvironment.RDUMMY);
-		env.writeCode("Library __checkArrayAccess("+targetExprResult.value+indexExprResult.value+"),"+IREnvironment.RDUMMY);
+		env.writeCode("Library __checkArrayAccess("+targetExprResult.value+","+indexExprResult.value+"),"+IREnvironment.RDUMMY);
 		IRVisitResult irVisitResult=null;
 		if(!isLeftHandSideExpr)
 		{ 
@@ -481,7 +495,9 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(NumberExpr expr, IREnvironment env) {
-		return new IRVisitResult(env.getTypeEntry(IREnvironment.INT),expr.value);
+		String registerKey= env.getRegisterKey();
+		env.writeInstruction("Move", expr.value,registerKey);
+		return new IRVisitResult(env.getTypeEntry(IREnvironment.INT),registerKey);
 	}
 
 	public IRVisitResult visit(StringExpr expr, IREnvironment env) {
@@ -490,7 +506,9 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(BooleanExpr expr, IREnvironment env) {
-		return new IRVisitResult(env.getTypeEntry(IREnvironment.BOOLEAN),expr.value?1:0);
+		String registerKey= env.getRegisterKey();
+		env.writeInstruction("Move", expr.value?1:0,registerKey);
+		return new IRVisitResult(env.getTypeEntry(IREnvironment.BOOLEAN),registerKey);
 	}
 
 	public IRVisitResult visit(NullExpr expr, IREnvironment env) {
