@@ -5,7 +5,8 @@ public class Validator {
 	
 
 	private static final String MAIN_METHOD="main";
-	
+	private static final String LIBRARY_CLASS_NAME = "Library";
+
 	public static void validateIlegalOp(TypeEntry lType, TypeEntry rType, Operator op, int line,Environment env) {
 		String errorV1="The operator " +op.toString() + " is undefined for types " +lType.getEntryName()+", "+rType.getEntryName();
 		String errorV2="incompatible operand types "+lType.getEntryName()+" and "+rType.getEntryName();
@@ -84,7 +85,7 @@ public class Validator {
 	}
 
 	public static void validateLibraryInstantiation(TypeEntry type, Environment env, int line) {
-		if(type.getEntryId()==env.getTypeEntry("Library").getEntryId()){
+		if(type.getEntryId()==env.getTypeEntry(LIBRARY_CLASS_NAME).getEntryId()){
 			env.handleSemanticError("Cannot instantiate the type Library", line);
 		}
 		
@@ -122,4 +123,7 @@ public class Validator {
 		return false;
 	}
 	
+	public static boolean isLibraryClass(String className){
+		return className.equals(LIBRARY_CLASS_NAME);
+	}
 }
