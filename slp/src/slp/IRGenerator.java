@@ -482,8 +482,8 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(StringExpr expr, IREnvironment env) {
-		String stringLitralKey=env.getStringLitralKey(expr.value);		 
-		return new IRVisitResult(env.getTypeEntry(IREnvironment.STRING),stringLitralKey);
+		String stringLiteralKey=env.getStringLitralKey(expr.value);		 
+		return new IRVisitResult(env.getTypeEntry(IREnvironment.STRING),stringLiteralKey);
 	}
 
 	public IRVisitResult visit(BooleanExpr expr, IREnvironment env) {
@@ -496,13 +496,105 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(UnaryOpExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		IRVisitResult exprResult= expr.operand.accept(this, env);
+		
+		String registerKey= env.getRegisterKey();
+		env.writeInstruction("Mov", exprResult.value, registerKey);
+		if(expr.op==Operator.LNEG){
+			//if True==1 and False==0, then (bool Xor 1) == !bool
+			env.writeInstruction("Xor", 1, registerKey);
+		}
+		else {//expr.op==Operator.MINUS
+			env.writeInstruction("Mul", -1, registerKey);
+		}
+		
+		return new IRVisitResult(exprResult.type,registerKey);
 	}
 
 	public IRVisitResult visit(BinaryOpExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
-		return null;
+		IRVisitResult lhsResult= expr.lhs.accept(this, env);
+		IRVisitResult rhsResult= expr.lhs.accept(this, env);
+		String cmprLabelKey = env.getLabelKey();
+		
+		TypeEntry exprType=null;
+		String registerKey= env.getRegisterKey();
+		
+		switch (expr.op){
+		case EQUAL:
+			exprType=env.getTypeEntry(Environment.BOOLEAN);
+			
+			writeConditionalBool(registerKey,"JumpFalse",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			
+			break;
+		case NEQUAL:
+			exprType=env.getTypeEntry(Environment.BOOLEAN);
+			
+			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			break;
+		case GTE:
+			exprType=env.getTypeEntry(Environment.BOOLEAN);
+			
+			writeConditionalBool(registerKey,"JumpGE",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			break;
+		case LTE:
+			exprType=env.getTypeEntry(Environment.BOOLEAN);
+			writeConditionalBool(registerKey,"JumpLE",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			break;
+		case GT:
+			exprType=env.getTypeEntry(Environment.BOOLEAN);
+			
+			writeConditionalBool(registerKey,"JumpG",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			break;
+		case LT:
+			exprType=env.getTypeEntry(Environment.BOOLEAN);
+			writeConditionalBool(registerKey,"JumpL",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			break;
+		case LOR:
+			exprType=env.getTypeEntry(Environment.BOOLEAN);
+			env.writeInstruction("Mov",lhsResult.value,registerKey);
+			env.writeInstruction("Or", rhsResult.value, registerKey);
+			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, 0,registerKey,env);
+			break;
+		case LAND:
+			exprType=env.getTypeEntry(Environment.BOOLEAN);
+			env.writeInstruction("Mov",lhsResult.value,registerKey);
+			env.writeInstruction("And", rhsResult.value, registerKey);
+			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, 0,registerKey,env);
+			break;
+		case DIVIDE:
+			exprType=env.getTypeEntry(Environment.INT);
+			//check zero division
+			break;
+		case MINUS:
+			exprType=env.getTypeEntry(Environment.INT);
+			break;
+		case MOD:
+			exprType=env.getTypeEntry(Environment.INT);
+			break;
+		case MULTIPLY:
+			exprType=env.getTypeEntry(Environment.INT);
+			break;
+		case PLUS:
+			exprType=lhsResult.type;
+			break;
+		default:
+			break;
+		}
+		
+		return new IRVisitResult(exprType,registerKey);
+	}
+
+	private void writeConditionalBool(String registerKey, String cmprInstruction,
+			String cmprLabelKey, Object LValue, Object RValue,IREnvironment env) {
+		
+		env.writeInstruction("Mov",1,registerKey);
+		env.writeInstruction("Compare", LValue,RValue);
+		
+		
+		env.writeCode(cmprInstruction+" "+cmprLabelKey);
+		env.writeInstruction("Mov",0,registerKey);
+		env.writeLabel(cmprLabelKey);
+		
 	}
 
 	 
