@@ -531,36 +531,36 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		case EQUAL:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
 			
-			writeConditionalBool(registerKey,"JumpFalse",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,"JumpFalse",cmprLabelKey, rhsResult.value,lhsResult.value,env);
 			
 			break;
 		case NEQUAL:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
 			
-			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, rhsResult.value,lhsResult.value,env);
 			break;
 		case GTE:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
 			
-			writeConditionalBool(registerKey,"JumpGE",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,"JumpGE",cmprLabelKey, rhsResult.value,lhsResult.value,env);
 			break;
 		case LTE:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			writeConditionalBool(registerKey,"JumpLE",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,"JumpLE",cmprLabelKey, rhsResult.value,lhsResult.value,env);
 			break;
 		case GT:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
 			
-			writeConditionalBool(registerKey,"JumpG",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,"JumpG",cmprLabelKey, rhsResult.value,lhsResult.value,env);
 			break;
 		case LT:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			writeConditionalBool(registerKey,"JumpL",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,"JumpL",cmprLabelKey, rhsResult.value,lhsResult.value,env);
 			break;
 		case LOR:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			env.writeInstruction("Move",lhsResult.value,registerKey);
-			env.writeInstruction("Or", rhsResult.value, registerKey);
+			env.writeInstruction("Move",rhsResult.value,registerKey);
+			env.writeInstruction("Or", lhsResult.value, registerKey);
 			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, 0,registerKey,env);
 			break;
 		case LAND:
