@@ -564,18 +564,36 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		case DIVIDE:
 			exprType=env.getTypeEntry(Environment.INT);
 			//check zero division
+			env.writeCode("Library __checkZero("+lhsResult+"),"+IREnvironment.RDUMMY);
+			env.writeInstruction("Mov", rhsResult.value,registerKey);
+			env.writeInstruction("Div", lhsResult.value,registerKey);
+			
 			break;
 		case MINUS:
 			exprType=env.getTypeEntry(Environment.INT);
+			env.writeInstruction("Mov", rhsResult.value,registerKey);
+			env.writeInstruction("Sub", lhsResult.value,registerKey);
 			break;
 		case MOD:
 			exprType=env.getTypeEntry(Environment.INT);
+			env.writeInstruction("Mov", rhsResult.value,registerKey);
+			env.writeInstruction("Mod", lhsResult.value,registerKey);
 			break;
 		case MULTIPLY:
 			exprType=env.getTypeEntry(Environment.INT);
+			env.writeInstruction("Mov", rhsResult.value,registerKey);
+			env.writeInstruction("Mul", lhsResult.value,registerKey);
 			break;
 		case PLUS:
 			exprType=lhsResult.type;
+			if(exprType.getEntryId()==env.getTypeEntry(Environment.INT).getEntryId()){
+				env.writeInstruction("Mov", rhsResult.value,registerKey);
+				env.writeInstruction("Add", lhsResult.value,registerKey);	
+			}
+			else{
+				env.writeCode("Library __stringCat("+rhsResult.value+","+lhsResult.value+"),"+registerKey );	
+			}
+			
 			break;
 		default:
 			break;
