@@ -496,6 +496,9 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 
 		//env.writeCode("Library __checkSize("+exprResult.value+"),"+IREnvironment.RDUMMY);
 		//TODO: implement
+		
+
+		env.writeInstruction("Mul", 4,exprResult.value);
 		env.writeCode("Library __allocateArray("+exprResult.value+"),"+registerKey);
 		
 
