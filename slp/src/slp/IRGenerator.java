@@ -310,7 +310,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		String methodCallArgs="";
 		
 		
-		/*added by ofir
+		/*added by ofir:
 		 * previous version didn't support some calls with more than 1 argument. 
 		 * for example: foo1(foo2(),foo2()).
 		 * explanation: in every iteration in the loop below, exrResult.value is put into RDummy.
