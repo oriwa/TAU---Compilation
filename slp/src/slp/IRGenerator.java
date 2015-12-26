@@ -549,12 +549,10 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		
 		IRVisitResult rhsResult= expr.rhs.accept(this, env);
 		IRVisitResult lhsResult=null;
-		String cmprLabelKey = env.getLabelKey(),eventuallyLabelKey;
+		String cmprLabelKey = env.getLabelKey();
 		if(expr.op!=Operator.LAND && expr.op!=Operator.LOR){
 			lhsResult= expr.lhs.accept(this, env);
-		}
-		else eventuallyLabelKey=env.getLabelKey();
-		
+		}		
 		
 		
 		TypeEntry exprType=null;
@@ -569,13 +567,13 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		case EQUAL:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
 			
-			writeConditionalBool(registerKey,lhsResult.value,"JumpFalse", env);
+			writeConditionalBool(registerKey,lhsResult.value,"JumpTrue", env);
 			
 			break;
 		case NEQUAL:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
 			
-			writeConditionalBool(registerKey,lhsResult.value,"JumpTrue", env);
+			writeConditionalBool(registerKey,lhsResult.value,"JumpFalse", env);
 			break;
 		case GTE:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
