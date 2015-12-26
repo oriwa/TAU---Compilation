@@ -507,13 +507,15 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 
 	public IRVisitResult visit(NumberExpr expr, IREnvironment env) {
 		String registerKey= env.getRegisterKey();
-		env.writeInstruction("Move", expr.value,registerKey);
+		env.writeInstruction("Move", expr.value ,registerKey);
 		return new IRVisitResult(env.getTypeEntry(IREnvironment.INT),registerKey);
 	}
 
 	public IRVisitResult visit(StringExpr expr, IREnvironment env) {
 		String stringLiteralKey=env.getStringLitralKey(expr.value);		 
-		return new IRVisitResult(env.getTypeEntry(IREnvironment.STRING),stringLiteralKey);
+		String registerKey= env.getRegisterKey();
+		env.writeInstruction("Move", stringLiteralKey,registerKey);
+		return new IRVisitResult(env.getTypeEntry(IREnvironment.STRING),registerKey);
 	}
 
 	public IRVisitResult visit(BooleanExpr expr, IREnvironment env) {
@@ -538,7 +540,8 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			env.writeInstruction("Xor", 1, registerKey);
 		}
 		else {//expr.op==Operator.MINUS
-			env.writeInstruction("Mul", -1, registerKey);
+
+			env.writeCode("Neg "+ registerKey);
 		}
 		
 		return new IRVisitResult(exprResult.type,registerKey);
