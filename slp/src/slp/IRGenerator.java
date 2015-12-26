@@ -277,7 +277,8 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			IRVisitResult exprResult= virtualCall.expr.accept(this, env);
 			expValue=exprResult.value;
 			exprType =exprResult.type;
-			env.writeCode("Library __checkNullRef("+expValue+"),"+IREnvironment.RDUMMY);
+			//env.writeCode("Library __checkNullRef("+expValue+"),"+IREnvironment.RDUMMY);
+			//TODO: implement
 		}
 		int dispatchVectorIndex= exprType.dispatchVectorMap.get(virtualCall.name);
 		MethodSymbolEntry m = env.getMethodInClass(virtualCall.name, false, exprType);
@@ -398,7 +399,8 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			{
 				SymbolTable symbolTable=targetResult.type.getScope(false);
 				symbolEntry=symbolTable.getEntryByName(expr.name);
-				env.writeCode("Library __checkNullRef("+targetResult.value+"),"+IREnvironment.RDUMMY);
+				//env.writeCode("Library __checkNullRef("+targetResult.value+"),"+IREnvironment.RDUMMY);
+				//TODO: implement
 				moveField(expr, env, isLeftHandSideExpr, visitResult, targetResult.type,targetResult.value);
 
 			}			
@@ -459,8 +461,9 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		else
 			type=ArrayTypeEntry.makeArrayTypeEntry(targetExprResult.type,targetExprResult.type.getTypeDimension()-1);
 
-		env.writeCode("Library __checkNullRef("+targetExprResult.value+"),"+IREnvironment.RDUMMY);
-		env.writeCode("Library __checkArrayAccess("+targetExprResult.value+","+indexExprResult.value+"),"+IREnvironment.RDUMMY);
+		//env.writeCode("Library __checkNullRef("+targetExprResult.value+"),"+IREnvironment.RDUMMY);
+		//env.writeCode("Library __checkArrayAccess("+targetExprResult.value+","+indexExprResult.value+"),"+IREnvironment.RDUMMY);
+		//TODO: implement
 		IRVisitResult irVisitResult=null;
 		if(!isLeftHandSideExpr)
 		{ 
@@ -480,7 +483,8 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		
 		IRVisitResult targetExprResult= expr.expr.accept(this, env);
 		String registerKey= env.getRegisterKey();
-		env.writeCode("Library __checkNullRef("+targetExprResult.value+"),"+IREnvironment.RDUMMY);
+		//env.writeCode("Library __checkNullRef("+targetExprResult.value+"),"+IREnvironment.RDUMMY);
+		//TODO: implement
 		env.writeInstruction("ArrayLength",targetExprResult.value,registerKey);
 		return new IRVisitResult(env.getTypeEntry(Environment.INT),registerKey);
 	}
@@ -489,8 +493,9 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		IRVisitResult exprResult= expr.expr.accept(this, env); 
 		IRVisitResult typeResult=expr.type.accept(this, env);		 
 		String registerKey= env.getRegisterKey();
-		env.writeCode("Library __checkSize("+exprResult.value+"),"+IREnvironment.RDUMMY);
-		env.writeCode("Library __allocateObject("+exprResult.value+"),"+registerKey);
+		//env.writeCode("Library __checkSize("+exprResult.value+"),"+IREnvironment.RDUMMY);
+		//env.writeCode("Library __allocateObject("+exprResult.value+"),"+registerKey)
+		//TODO: implement
 		return  new IRVisitResult(ArrayTypeEntry.makeArrayTypeEntry(typeResult.type,typeResult.type.getTypeDimension()+1),registerKey);
 	}
 
@@ -596,7 +601,13 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			exprType=env.getTypeEntry(Environment.INT);
 			
 			//check zero division
+<<<<<<< HEAD
 			env.writeCode("Library __checkZero("+lhsResult+"),"+IREnvironment.RDUMMY);
+=======
+			//env.writeCode("Library __checkZero("+lhsResult+"),"+IREnvironment.RDUMMY);
+			//TODO: implement
+			env.writeInstruction("Move", rhsResult.value,registerKey);
+>>>>>>> 5d6408b92ad50d56f9706eadf3cb0baf38d9baae
 			env.writeInstruction("Div", lhsResult.value,registerKey);
 			
 			break;
