@@ -288,9 +288,6 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			int returnTypeDimensions = type.getTypeDimension();
 			if(returnTypeDimensions != 0)
 				type = ArrayTypeEntry.makeArrayTypeEntry(type, returnTypeDimensions);
-		}
-		else
-		{
 			registerKey= env.getRegisterKey();	
 		}
  
