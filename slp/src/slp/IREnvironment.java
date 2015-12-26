@@ -303,8 +303,9 @@ public class IREnvironment {
 	
 	public String getRegisterKey()
 	{
+		String register= "R"+registerSerial;
 		registerSerial++;
-		return "R"+registerSerial;
+		return register;
 	}
 	
 	public void resetRegister()
@@ -314,12 +315,9 @@ public class IREnvironment {
 	
 	public String getLabelKey()
 	{
-		return "L"+labelSerial;
-	}
-	
-	public void resetLabel()
-	{
-		labelSerial=0;
+		String label= "_L"+labelSerial;
+		labelSerial++;
+		return label;
 	}
 	
 	public void writeComment(String line)
