@@ -542,13 +542,22 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(BinaryOpExpr expr, IREnvironment env) {
-		IRVisitResult lhsResult= expr.lhs.accept(this, env);
+
+		
 		IRVisitResult rhsResult= expr.rhs.accept(this, env);
-		String cmprLabelKey = env.getLabelKey();
+		IRVisitResult lhsResult=null;
+		String cmprLabelKey = env.getLabelKey(),eventuallyLabelKey;
+		if(expr.op!=Operator.LAND && expr.op!=Operator.LOR){
+			lhsResult= expr.lhs.accept(this, env);
+		}
+		else eventuallyLabelKey=env.getLabelKey();
+		
+		
 		
 		TypeEntry exprType=null;
 		String registerKey=env.getRegisterKey();
 		
+		env.writeInstruction("Move",rhsResult.value,registerKey);
 		
 		
 		
@@ -557,47 +566,70 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		case EQUAL:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
 			
-			writeConditionalBool(registerKey,"JumpFalse",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,lhsResult.value,"JumpFalse", env);
 			
 			break;
 		case NEQUAL:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
 			
-			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,lhsResult.value,"JumpTrue", env);
 			break;
 		case GTE:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
 			
-			writeConditionalBool(registerKey,"JumpGE",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,lhsResult.value,"JumpGE", env);
 			break;
 		case LTE:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			writeConditionalBool(registerKey,"JumpLE",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,lhsResult.value,"JumpLE", env);
 			break;
 		case GT:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
 			
-			writeConditionalBool(registerKey,"JumpG",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,lhsResult.value,"JumpG", env);
 			break;
 		case LT:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			writeConditionalBool(registerKey,"JumpL",cmprLabelKey, lhsResult.value,lhsResult.value,env);
+			writeConditionalBool(registerKey,lhsResult.value,"JumpL", env);
 			break;
 		case LOR:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
+			env.writeInstruction("Compare",0, registerKey );
+			
+			//short circuiting... if $(registerKey)!=0 then LOR is true and equals $(registerKey) 
+			env.writeCode("JumpFalse"+" "+cmprLabelKey);
+			
+			//evaluating the other expr
+			lhsResult= expr.lhs.accept(this, env);
+			
+			//$(registerKey) =$(lhsResult) 
 			env.writeInstruction("Move",lhsResult.value,registerKey);
-			env.writeInstruction("Or", rhsResult.value, registerKey);
-			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, 0,registerKey,env);
+			
+			env.writeLabel(cmprLabelKey);
 			break;
 		case LAND:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
+			
+			env.writeInstruction("Compare",0, registerKey );
+			
+			//short circuiting... if $(registerKey)==0 then LAND is false and equals $(registerKey)
+			env.writeCode("JumpTrue"+" "+cmprLabelKey);
+			
+			//evaluating the other expr
+			lhsResult= expr.lhs.accept(this, env);
+			
+			//$(registerKey) =$(lhsResult)
 			env.writeInstruction("Move",lhsResult.value,registerKey);
-			env.writeInstruction("And", rhsResult.value, registerKey);
-			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, 0,registerKey,env);
+			
+			env.writeLabel(cmprLabelKey);
 			break;
 		case DIVIDE:
 			exprType=env.getTypeEntry(Environment.INT);
+			
 			//check zero division
+
+			env.writeCode("Library __checkZero("+lhsResult+"),"+IREnvironment.RDUMMY);
+
 			//env.writeCode("Library __checkZero("+lhsResult+"),"+IREnvironment.RDUMMY);
 			//TODO: implement
 			env.writeInstruction("Move", rhsResult.value,registerKey);
@@ -606,27 +638,27 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			break;
 		case MINUS:
 			exprType=env.getTypeEntry(Environment.INT);
-			env.writeInstruction("Move", rhsResult.value,registerKey);
+			
 			env.writeInstruction("Sub", lhsResult.value,registerKey);
 			break;
 		case MOD:
 			exprType=env.getTypeEntry(Environment.INT);
-			env.writeInstruction("Move", rhsResult.value,registerKey);
+			
 			env.writeInstruction("Mod", lhsResult.value,registerKey);
 			break;
 		case MULTIPLY:
 			exprType=env.getTypeEntry(Environment.INT);
-			env.writeInstruction("Move", rhsResult.value,registerKey);
+			
 			env.writeInstruction("Mul", lhsResult.value,registerKey);
 			break;
 		case PLUS:
 			exprType=lhsResult.type;
 			if(exprType.getEntryId()==env.getTypeEntry(Environment.INT).getEntryId()){
-				env.writeInstruction("Move", rhsResult.value,registerKey);
+				
 				env.writeInstruction("Add", lhsResult.value,registerKey);	
 			}
 			else{
-				env.writeCode("Library __stringCat("+rhsResult.value+","+lhsResult.value+"),"+registerKey );	
+				env.writeCode("Library __stringCat("+lhsResult.value+","+registerKey+"),"+registerKey );	
 			}
 			
 			break;
@@ -638,16 +670,16 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 
-	private void writeConditionalBool(String registerKey, String cmprInstruction,
-			String cmprLabelKey, Object LValue, Object RValue,IREnvironment env) {
-		
-		env.writeInstruction("Move",1,registerKey);
-		env.writeInstruction("Compare", LValue,RValue);
-		
-		
-		env.writeCode(cmprInstruction+" "+cmprLabelKey);
-		env.writeInstruction("Move",0,registerKey);
-		env.writeLabel(cmprLabelKey);
+	private void writeConditionalBool(String Reg, Object otherVal,String cmprInstruction,IREnvironment env) {
+		String cmprTrueLable=env.getLabelKey();
+		String eventuallyLable= env.getLabelKey();
+		env.writeInstruction("Compare", otherVal,Reg);
+		env.writeCode(cmprInstruction+" "+cmprTrueLable);
+		env.writeInstruction("Move", 0,Reg);
+		env.writeCode("Jump"+" "+eventuallyLable);
+		env.writeLabel(cmprTrueLable);
+		env.writeInstruction("Move", 1,Reg);
+		env.writeLabel(eventuallyLable);
 		
 	}
 
