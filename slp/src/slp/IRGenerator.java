@@ -661,7 +661,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 				env.writeInstruction("Add", lhsResult.value,registerKey);	
 			}
 			else{
-				env.writeCode("Library __stringCat("+lhsResult.value+","+registerKey+"),"+registerKey );	
+				env.writeCode("Library __stringCat("+registerKey+","+lhsResult.value+"),"+registerKey );	
 			}
 			
 			break;
