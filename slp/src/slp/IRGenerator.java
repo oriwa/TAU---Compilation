@@ -308,25 +308,10 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	private String prepareMethodCallArgs(List<String> methodArgs,List<Expr> expressions, IREnvironment env) {
 		
 		String methodCallArgs="";
-		
-		
-		/*added by ofir:
-		 * previous version didn't support some calls with more than 1 argument. 
-		 * for example: foo1(foo2(),foo2()).
-		 * explanation: in every iteration in the loop below, exrResult.value is put into RDummy.
-		 * some with more than one call inside the parameter list, RDummy gets overriden 
-		 * */ 
-		String tmpKey;
-		
 		int count=0;
 		for (String methodArg : methodArgs) {
 			IRVisitResult exrResult=expressions.get(count).accept(this, env);
-			
-			/*changed by ofir, to handle case described above*/
-			tmpKey=env.getRegisterKey();
-			env.writeInstruction("Move", exrResult.value, tmpKey);
-			methodCallArgs+=methodArg+"="+tmpKey;
-			
+			methodCallArgs+=methodArg+"="+exrResult.value;
 			count++;
 			if(count!=expressions.size())
 				methodCallArgs+=",";
