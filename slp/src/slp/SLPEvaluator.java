@@ -11,7 +11,6 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	
 	
 
-	private static final String MAIN_METHOD="main";
 	
 	protected ASTNode root;
 	
@@ -213,7 +212,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 		
 		env.setSymbolTable(currentClassType.getScope(method.isStatic));
 		
-		if(IsMainMethod(method))
+		if(Validator.isMainMethod(method))
 			env.addMainMethodNumber();
 		
 		env.setCurrentMethod(method);
@@ -229,19 +228,7 @@ public class SLPEvaluator implements PropagatingVisitor<Environment, VisitResult
 	} 
 	 
 
-	private boolean IsMainMethod(Method method) {
 
-		if(method.isStatic && method.name.equals(MAIN_METHOD) && method.type==null)
-		{
-			if(method.formalsList.formals.size()==1)
-			{
-				Formals formal=method.formalsList.formals.get(0);
-				if(formal.type.name.equals(Environment.STRING) && formal.type.array_dimension==1)
-					return true;
-			}
-		}					
-		return false;
-	}
 
 	public VisitResult visit(FormalsList formalsList, Environment env) {
 		for (Formals f : formalsList.formals){
