@@ -141,13 +141,21 @@ public class TypeEntry {
 	
 	public void InitDispatchVectorAndFieldsMapping()
 	{
+		ArrayList<MethodSymbolEntry> newDispatchVector=new ArrayList<MethodSymbolEntry>();
 		if(extending!=null)
 		{
-			for (int i = extending.dispatchVector.size()-1; i > -1; i--) {
+			//keeps the method order from the extending parent
+			for (int i = 0; i < extending.dispatchVector.size(); i++) {
 				MethodSymbolEntry entry=extending.dispatchVector.get(i);
-				if(entry==instanceScope.get(entry.getEntryName()))
+				MethodSymbolEntry current =(MethodSymbolEntry)instanceScope.get(entry.getEntryName());
+				if(entry==current)
 				{
-					dispatchVector.add(0, entry);
+					newDispatchVector.add(entry);
+				}
+				else
+				{
+					newDispatchVector.add(current);
+					dispatchVector.remove(current);
 				}	
 			} 
 			for (int i = extending.fields.size()-1; i > -1; i--) {
@@ -155,11 +163,15 @@ public class TypeEntry {
 				fields.add(0, entry);
 			}  
 		}
-		for (SymbolEntry entry : dispatchVector) {
+		for (MethodSymbolEntry methodSymbolEntry : dispatchVector) {
+			newDispatchVector.add(methodSymbolEntry);
+		}
+		for (SymbolEntry entry : newDispatchVector) {
 			dispatchVectorMap.put(entry.getEntryName(), dispatchVectorMap.size());	
 		}
+		dispatchVector=newDispatchVector;
 		for (SymbolEntry entry : fields) {
-			fieldMap.put(entry.getEntryName(), fieldMap.size());
+			fieldMap.put(entry.getEntryName(), fieldMap.size()+1);
 		} 
 	}
 	

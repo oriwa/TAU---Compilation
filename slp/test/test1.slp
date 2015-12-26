@@ -16,6 +16,13 @@
    }
    
    static void main(string[] args) {
+     Bar b = new Bar();
+     b.x=10;
+     b.y=20;
+     b.z=30;
+     Library.printi(b.x);
+     Library.printi(b.y);
+     Library.printi(b.z);
      Foo f = new Bar();
      f.rise(1);
      f.shine(2);

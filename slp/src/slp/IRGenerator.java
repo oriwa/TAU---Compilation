@@ -182,8 +182,8 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		if (createScope)
 			env.enterScope();
 		String ifLabelKey = env.getLabelKey();
-		env.writeInstruction("Compare", 1,exprResult.value);
-		env.writeCode("JumpFalse "+ifLabelKey);
+		env.writeInstruction("Compare", 0,exprResult.value);
+		env.writeCode("JumpTrue "+ifLabelKey);
 		ifStmt.ifStmt.accept(this,env); 		
 		if (createScope)
 			env.leaveScope();
@@ -220,8 +220,8 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		IRVisitResult exprResult =whileStmt.expr.accept(this,env);  
 		
 
-		env.writeInstruction("Compare", 1,exprResult.value);
-		env.writeCode("JumpFalse "+stopLabelKey);
+		env.writeInstruction("Compare", 0,exprResult.value);
+		env.writeCode("JumpTrue "+stopLabelKey);
 		
 		boolean createScope = !(whileStmt.stmt instanceof StmtList);
 		if (createScope)
