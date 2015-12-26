@@ -279,6 +279,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		}
 		int dispatchVectorIndex= exprType.dispatchVectorMap.get(virtualCall.name);
 		MethodSymbolEntry m = env.getMethodInClass(virtualCall.name, false, exprType);
+
 		String methodCallArgs = prepareMethodCallArgs(m.getMethodArgsNames(), virtualCall.callArgs.expressions, env);
 
 		String registerKey=IREnvironment.RDUMMY;
@@ -300,16 +301,32 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			op1+=","+methodCallArgs+")";
 		env.writeInstruction("VirtualCall",op1, registerKey);
 		
+		
 		return new IRVisitResult(type,registerKey);
 	}
 
 	private String prepareMethodCallArgs(List<String> methodArgs,List<Expr> expressions, IREnvironment env) {
 		
 		String methodCallArgs="";
+		
+		
+		/*added by ofir
+		 * previous version didn't support some calls with more than 1 argument. 
+		 * for example: foo1(foo2(),foo2()).
+		 * explanation: in every iteration in the loop below, exrResult.value is put into RDummy.
+		 * some with more than one call inside the parameter list, RDummy gets overriden 
+		 * */ 
+		String tmpKey;
+		
 		int count=0;
 		for (String methodArg : methodArgs) {
 			IRVisitResult exrResult=expressions.get(count).accept(this, env);
-			methodCallArgs+=methodArg+"="+exrResult.value;
+			
+			/*changed by ofir, to handle case described above*/
+			tmpKey=env.getRegisterKey();
+			env.writeInstruction("Move", exrResult.value, tmpKey);
+			methodCallArgs+=methodArg+"="+tmpKey;
+			
 			count++;
 			if(count!=expressions.size())
 				methodCallArgs+=",";
@@ -491,7 +508,8 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 	}
 
 	public IRVisitResult visit(NullExpr expr, IREnvironment env) {
-		// TODO Auto-generated method stub
+		//return new IRVisitResult(env.getTypeEntry(IREnvironment.NULL),?);
+		//TODO: return something
 		return null;
 	}
 
@@ -499,7 +517,7 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		IRVisitResult exprResult= expr.operand.accept(this, env);
 		
 		String registerKey= env.getRegisterKey();
-		env.writeInstruction("Mov", exprResult.value, registerKey);
+		env.writeInstruction("Move", exprResult.value, registerKey);
 		if(expr.op==Operator.LNEG){
 			//if True==1 and False==0, then (bool Xor 1) == !bool
 			env.writeInstruction("Xor", 1, registerKey);
@@ -513,11 +531,15 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 
 	public IRVisitResult visit(BinaryOpExpr expr, IREnvironment env) {
 		IRVisitResult lhsResult= expr.lhs.accept(this, env);
-		IRVisitResult rhsResult= expr.lhs.accept(this, env);
+		IRVisitResult rhsResult= expr.rhs.accept(this, env);
 		String cmprLabelKey = env.getLabelKey();
 		
 		TypeEntry exprType=null;
-		String registerKey= env.getRegisterKey();
+		String registerKey=env.getRegisterKey();
+		
+		
+		
+		
 		
 		switch (expr.op){
 		case EQUAL:
@@ -551,13 +573,13 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			break;
 		case LOR:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			env.writeInstruction("Mov",lhsResult.value,registerKey);
+			env.writeInstruction("Move",lhsResult.value,registerKey);
 			env.writeInstruction("Or", rhsResult.value, registerKey);
 			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, 0,registerKey,env);
 			break;
 		case LAND:
 			exprType=env.getTypeEntry(Environment.BOOLEAN);
-			env.writeInstruction("Mov",lhsResult.value,registerKey);
+			env.writeInstruction("Move",lhsResult.value,registerKey);
 			env.writeInstruction("And", rhsResult.value, registerKey);
 			writeConditionalBool(registerKey,"JumpTrue",cmprLabelKey, 0,registerKey,env);
 			break;
@@ -565,29 +587,29 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 			exprType=env.getTypeEntry(Environment.INT);
 			//check zero division
 			env.writeCode("Library __checkZero("+lhsResult+"),"+IREnvironment.RDUMMY);
-			env.writeInstruction("Mov", rhsResult.value,registerKey);
+			env.writeInstruction("Move", rhsResult.value,registerKey);
 			env.writeInstruction("Div", lhsResult.value,registerKey);
 			
 			break;
 		case MINUS:
 			exprType=env.getTypeEntry(Environment.INT);
-			env.writeInstruction("Mov", rhsResult.value,registerKey);
+			env.writeInstruction("Move", rhsResult.value,registerKey);
 			env.writeInstruction("Sub", lhsResult.value,registerKey);
 			break;
 		case MOD:
 			exprType=env.getTypeEntry(Environment.INT);
-			env.writeInstruction("Mov", rhsResult.value,registerKey);
+			env.writeInstruction("Move", rhsResult.value,registerKey);
 			env.writeInstruction("Mod", lhsResult.value,registerKey);
 			break;
 		case MULTIPLY:
 			exprType=env.getTypeEntry(Environment.INT);
-			env.writeInstruction("Mov", rhsResult.value,registerKey);
+			env.writeInstruction("Move", rhsResult.value,registerKey);
 			env.writeInstruction("Mul", lhsResult.value,registerKey);
 			break;
 		case PLUS:
 			exprType=lhsResult.type;
 			if(exprType.getEntryId()==env.getTypeEntry(Environment.INT).getEntryId()){
-				env.writeInstruction("Mov", rhsResult.value,registerKey);
+				env.writeInstruction("Move", rhsResult.value,registerKey);
 				env.writeInstruction("Add", lhsResult.value,registerKey);	
 			}
 			else{
@@ -602,15 +624,16 @@ public class IRGenerator implements PropagatingVisitor<IREnvironment, IRVisitRes
 		return new IRVisitResult(exprType,registerKey);
 	}
 
+
 	private void writeConditionalBool(String registerKey, String cmprInstruction,
 			String cmprLabelKey, Object LValue, Object RValue,IREnvironment env) {
 		
-		env.writeInstruction("Mov",1,registerKey);
+		env.writeInstruction("Move",1,registerKey);
 		env.writeInstruction("Compare", LValue,RValue);
 		
 		
 		env.writeCode(cmprInstruction+" "+cmprLabelKey);
-		env.writeInstruction("Mov",0,registerKey);
+		env.writeInstruction("Move",0,registerKey);
 		env.writeLabel(cmprLabelKey);
 		
 	}
